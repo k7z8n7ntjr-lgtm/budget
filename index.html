@@ -35,7 +35,8 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-html, body { background: var(--bg); color: var(--fg); }
+html, body { background: var(--bg); color: var(--fg); height: 100%; }
+body { display: flex; flex-direction: column; overflow: hidden; }
 body { font-family: var(--font); font-size: 15px; line-height: 1.35; }
 .pwa body { padding-top: env(safe-area-inset-top, 0px); }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -43,17 +44,19 @@ button:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2p
 .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
 .app {
-  max-width: 520px; margin: 0 auto;
+  flex: 1; min-height: 0; width: 100%; max-width: 520px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 8px 120px;
-  display: flex; flex-direction: column; gap: 16px;
+  padding-block: 2px 0;
+  display: flex; flex-direction: column; gap: 10px;
 }
+.app > * { flex: none; }
 
 /* month bar */
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; }
-.month { display: flex; align-items: center; gap: 2px; }
-.month h1 { font-size: 20px; font-weight: 700; margin: 0; min-width: 0; letter-spacing: -0.01em; padding-inline: 4px; }
+.bar { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; min-height: 44px; }
+.month { grid-column: 2; justify-self: center; display: flex; align-items: center; gap: 0; }
+.month h1 { font-size: 20px; font-weight: 700; margin: 0; min-width: 6.6em; text-align: center; letter-spacing: -0.01em; white-space: nowrap; }
+#settings-btn { grid-column: 3; }
 .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--fg); }
 .icon-btn:active { background: var(--track); }
 .icon-btn[disabled] { opacity: .25; cursor: default; }
@@ -64,17 +67,17 @@ button:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2p
 .demo button { font-weight: 600; white-space: nowrap; color: #6A5312; text-decoration: underline; }
 
 /* budget card */
-.budget { background: var(--surface); border-radius: 22px; padding: 16px; display: flex; align-items: center; gap: 16px; }
-.budget-src { position: relative; flex: none; width: 92px; height: 92px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-radius: 50%; }
+.budget { background: var(--surface); border-radius: 20px; padding: 12px 14px; display: flex; align-items: center; gap: 14px; }
+.budget-src { position: relative; flex: none; width: 64px; height: 64px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-radius: 50%; }
 .budget-src .disc-in { background: var(--accent); color: var(--accent-ink); }
 .budget-src.lifted { transform: scale(.92); opacity: .5; transition: transform .15s, opacity .15s; }
-.budget-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.budget-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.remain { display: flex; flex-wrap: wrap-reverse; align-items: baseline; column-gap: 8px; }
+.remain.over .big, .remain.over .label { color: var(--danger); }
 .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-.big { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.big { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
 .budget-info .of { color: var(--muted); font-size: 14px; }
-.budget-info .left { font-size: 14px; margin-top: 4px; }
-.budget-info .left.over { color: var(--danger); font-weight: 600; }
-.hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.hint { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
 
 /* disc + ring (shared by budget and categories) */
 .disc { position: relative; display: block; width: 100%; height: 100%; }
@@ -85,11 +88,14 @@ button:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2p
 .disc.over .disc-in { background: var(--danger-tint); }
 
 /* category grid */
-.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 6px; }
+/* Grid fills what is left of the screen; circles scale with the height, and only the grid scrolls once they hit the minimum. */
+.grid-wrap { flex: 1 1 auto !important; min-height: 0; container-type: size; }
+.grid { height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 4px; align-content: start; padding-bottom: 8px;
+  --d: clamp(48px, calc((100cqh - (var(--rows, 3) - 1) * 8px) / var(--rows, 3) - 78px), 76px); }
 .cat { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 6px 2px; border-radius: 16px; transition: background .12s, transform .12s; }
 .cat:active { background: var(--track); }
 .cat-name { font-size: 12px; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cat .disc { width: 64px; height: 64px; }
+.cat .disc { width: min(var(--d), calc(25cqw - 12px)); height: min(var(--d), calc(25cqw - 12px)); }
 .cat-spent { font-size: 15px; font-weight: 600; white-space: nowrap; }
 .cat-limit { font-size: 11px; color: var(--muted); white-space: nowrap; min-height: 14px; }
 .cat.over .cat-spent, .cat.over .cat-limit { color: var(--danger); }
@@ -99,9 +105,16 @@ body.dragging .cat:not(.add) .disc-in { box-shadow: 0 0 0 2px var(--surface), 0 
 
 .ghost { position: fixed; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 24px; font-weight: 700; pointer-events: none; z-index: 50; box-shadow: 0 8px 24px rgba(20,40,30,.3); }
 
-.fab { position: fixed; right: max(20px, calc(16px + env(safe-area-inset-right, 0px))); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 6px 20px rgba(20,60,45,.28); z-index: 5; }
-.fab svg { width: 28px; height: 28px; }
-.fab:active { transform: scale(.94); }
+/* Bottom bar: full width, a soft hill that peaks in the middle; the whole bar adds an expense. */
+.addbar { flex: none; position: relative; display: block; width: 100%; height: calc(78px + env(safe-area-inset-bottom, 0px)); color: var(--accent-ink); z-index: 5; }
+.addbar .shape { position: absolute; left: 0; top: 0; width: 100%; height: 78px; display: block; filter: drop-shadow(0 -3px 10px rgba(20,60,45,.16)); }
+.addbar .shape path { fill: var(--accent); }
+.addbar::after { content: ""; position: absolute; left: 0; right: 0; top: 77px; bottom: 0; background: var(--accent); }
+.addbar .plus { position: absolute; left: 50%; top: 16px; width: 44px; height: 44px; margin-left: -22px; display: grid; place-items: center; transition: transform .12s; }
+.addbar .plus svg { width: 40px; height: 40px; stroke-width: 2.4; }
+.addbar:active .plus { transform: scale(.9); }
+.addbar:focus-visible { outline: none; }
+.addbar:focus-visible .plus { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 50%; }
 
 /* sheets */
 .backdrop { position: fixed; inset: 0; background: rgba(20,24,22,.32); z-index: 20; opacity: 0; transition: opacity .2s; }
@@ -192,9 +205,12 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
   </div>
   <div id="demo"></div>
   <section class="budget" id="budget"></section>
-  <section class="grid" id="grid" aria-label="Категории"></section>
+  <div class="grid-wrap" id="grid-wrap"><section class="grid" id="grid" aria-label="Категории"></section></div>
 </div>
-<button class="fab" id="fab" aria-label="Добавить трату"></button>
+<button class="addbar" id="fab" aria-label="Добавить трату">
+  <svg class="shape" viewBox="0 0 400 78" preserveAspectRatio="none" aria-hidden="true"><path d="M0 78 V40 C70 40 118 2 200 2 C282 2 330 40 400 40 V78 Z"/></svg>
+  <span class="plus"></span>
+</button>
 <input type="file" id="import-file" accept="application/json,.json" hidden>
 
 <script>
@@ -366,7 +382,7 @@ function disc({ iconName, color, pct = null, ring = null, cls = '', inner = '' }
   const p = pct == null ? 0 : Math.max(0, Math.min(1, pct));
   const ringSvg = pct == null ? '' : `<svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--track)" stroke-width="6"/>
-      <circle cx="50" cy="50" r="${r}" fill="none" stroke="${ring}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(C * p).toFixed(2)} ${C.toFixed(2)}" ${p === 0 ? 'stroke-opacity="0"' : ''}/>
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="${ring}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(p === 0 ? 0 : Math.max(C * p, 10)).toFixed(2)} ${C.toFixed(2)}" ${p === 0 ? 'stroke-opacity="0"' : ''}/>
     </svg>`;
   const style = color ? `--c:${color};--tint:${hexA(color, 0.13)}` : '';
   return `<span class="disc ${cls}" style="${style}">${ringSvg}<span class="disc-in">${inner || icon(iconName)}</span></span>`;
@@ -391,22 +407,16 @@ function render() {
   const budget = limitAt(S.budget, view);
   const over = budget != null && total > budget;
   const left = budget == null ? null : budget - total;
-  let perDay = '';
-  if (view === cur && left > 0) {
-    const daysLeft = daysIn(view) - new Date().getDate() + 1;
-    perDay = ` · ~${rub(Math.floor(left / daysLeft))} в день`;
-  }
   $('#budget').innerHTML = `
     <button class="budget-src" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
       ${disc({ iconName: 'landmark', pct: budget ? total / budget : null, ring: over ? 'var(--danger)' : 'var(--accent)' })}
     </button>
     <div class="budget-info">
-      <span class="label">Потрачено в ${esc(monthIn(view))}</span>
-      <span class="big num">${rub(total)}</span>
       ${budget != null
-        ? `<span class="of num">из ${rub(budget)}</span>
-           <span class="left num ${over ? 'over' : ''}">${over ? 'Перерасход ' + rub(-left) : 'Осталось ' + rub(left) + perDay}</span>`
-        : `<span class="of">Общий бюджет не задан</span>`}
+        ? `<div class="remain ${over ? 'over' : ''}"><span class="big num">${over ? '−' + rub(-left) : rub(left)}</span><span class="label">${over ? 'Перерасход' : 'Осталось'}</span></div>
+           <span class="of num">${NF.format(Math.round(total))} / ${rub(budget)}</span>`
+        : `<div class="remain"><span class="big num">${rub(total)}</span><span class="label">Потрачено</span></div>
+           <span class="of">Бюджет на месяц не задан</span>`}
       <span class="hint">Перетащите кружок на категорию, чтобы записать трату</span>
     </div>`;
   setupDrag($('#budget-src'));
@@ -418,7 +428,7 @@ function render() {
     const limit = limitAt(c.limits, view);
     const st = catState(c, spent, limit, view);
     const cls = st.state === 'none' ? 'nolimit' : st.state === 'over' && spent > limit ? 'over' : '';
-    const sub = limit == null ? '' : spent > limit ? `+${rub(spent - limit)}` : `из ${rub(limit)}`;
+    const sub = limit == null ? '' : spent > limit ? `+${rub(spent - limit)}` : rub(limit);
     return `<button class="cat ${spent > (limit ?? Infinity) ? 'over' : ''}" data-cat="${c.id}">
       <span class="cat-name">${esc(c.name)}</span>
       ${disc({ iconName: c.icon, color: c.color, pct: limit == null ? null : spent / limit, ring: st.ring, cls })}
@@ -430,6 +440,7 @@ function render() {
       ${disc({ inner: icon('plus') })}
       <span class="cat-spent">&nbsp;</span><span class="cat-limit"></span>
     </button>`;
+  $('#grid-wrap').style.setProperty('--rows', Math.ceil((cats.length + 1) / 4));
   $('#grid').querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => openCategory(b.dataset.cat));
   $('#add-cat').onclick = () => openCategoryEdit(null);
 }
@@ -731,9 +742,34 @@ function toast(msg) {
 $('#prev').innerHTML = icon('left');
 $('#next').innerHTML = icon('right');
 $('#settings-btn').innerHTML = icon('sliders');
-$('#fab').innerHTML = icon('plus');
-$('#prev').onclick = () => { view = shiftYM(view, -1); render(); };
-$('#next').onclick = () => { if (view < ymOf(today())) { view = shiftYM(view, 1); render(); } };
+$('#fab .plus').innerHTML = icon('plus');
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function goMonth(d) {
+  if (d > 0 && view >= ymOf(today())) return;
+  view = shiftYM(view, d); render();
+  if (reduceMotion) return;
+  [$('#budget'), $('#grid-wrap')].forEach((el) => el.animate && el.animate(
+    [{ transform: `translateX(${d * 28}px)`, opacity: 0.25 }, { transform: 'none', opacity: 1 }],
+    { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' }));
+}
+$('#prev').onclick = () => goMonth(-1);
+$('#next').onclick = () => goMonth(1);
+// Horizontal swipe anywhere on the page switches months (not while dragging the budget circle).
+(() => {
+  let sx = null, sy = 0, t0 = 0;
+  const area = $('#app');
+  area.addEventListener('touchstart', (e) => {
+    if (sheetEl || e.touches.length !== 1 || e.target.closest('#budget-src')) { sx = null; return; }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  area.addEventListener('touchend', (e) => {
+    if (sx == null) return;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    sx = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - t0 > 800) return;
+    goMonth(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
 $('#settings-btn').onclick = openSettings;
 $('#fab').onclick = () => openTx({});
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetEl) render(); });
