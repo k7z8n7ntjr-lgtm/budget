@@ -22,6 +22,7 @@
   --fg: #1B1E1C;
   --muted: #747A76;
   --line: #E2E5E0;
+  --key: #E9ECE7;
   --track: #E6E9E4;
   --accent: #24584A;
   --accent-ink: #FFFFFF;
@@ -138,13 +139,42 @@ body.dragging .cat:not(.add) .disc-in { box-shadow: 0 0 0 2px var(--surface), 0 
 input[type=date].input { min-height: 44px; }
 .row .field.date { flex: 0 0 140px; }
 
-.pick { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px 4px; }
-.pick button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; border-radius: 14px; min-width: 0; }
-.pick .disc { width: 44px; height: 44px; }
-.pick small { font-size: 11px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 2px 4px; }
+.pick button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; border-radius: 14px; min-width: 0; }
+.pick .disc { width: 38px; height: 38px; }
+.pick small { font-size: 10.5px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pick button[aria-pressed=true] { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pick button[aria-pressed=true] small { color: var(--fg); font-weight: 600; }
 .sub { font-size: 13px; color: var(--muted); }
+.sub.tight { font-size: 12px; margin-top: -4px; }
+
+/* Expense sheet: own keypad instead of the iOS keyboard */
+.sheet.txs { padding-bottom: 0; gap: 12px; }
+.sheet.txs.typing { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+.sheet.txs.typing .keypad { display: none; }
+.cat-head { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; }
+.cat-head h2 { flex: 0 1 auto; }
+.cat-head .chg { flex: none; font-size: 13px; color: var(--accent); font-weight: 600; }
+.amt-row { display: flex; align-items: flex-end; gap: 10px; }
+.amt { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--accent); padding-bottom: 4px; cursor: text; }
+.amt b { font-family: var(--font-num); font-size: 38px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; line-height: 1.15; }
+.amt b.empty { color: #B9BEBA; }
+.amt .cur { margin-left: auto; font-size: 28px; color: var(--muted); font-weight: 600; }
+.caret { display: inline-block; width: 2px; height: 0.82em; background: var(--accent); margin-left: 2px; vertical-align: -0.06em; animation: blink 1s steps(1) infinite; }
+.typing .caret { visibility: hidden; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+.datechip { position: relative; flex: none; height: 40px; padding: 0 10px 0 12px; border-radius: 12px; background: var(--bg); display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; margin-bottom: 6px; white-space: nowrap; }
+.datechip svg { width: 16px; height: 16px; color: var(--muted); }
+.datechip input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; font-size: 16px; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.datechip:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.keypad { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; background: var(--bg);
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+.keypad button { height: 48px; border-radius: 10px; background: var(--surface); font-family: var(--font-num); font-size: 24px; font-weight: 500; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0,0,0,.08); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.keypad button.f { background: var(--key); }
+.keypad button:active { background: var(--line); }
+.keypad svg { width: 24px; height: 24px; }
 
 .btn { min-height: 50px; border-radius: 14px; font-weight: 600; font-size: 16px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); }
@@ -260,6 +290,8 @@ const ICONS = {
   'right': '<path d="m9 18 6-6-6-6"/>',
   'sliders': '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
   'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  'backspace': '<path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/>',
+  'chevron-down': '<path d="m6 9 6 6 6-6"/>',
   'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
 };
 const CAT_ICONS = Object.keys(ICONS).slice(0, Object.keys(ICONS).indexOf('landmark'));
@@ -496,10 +528,10 @@ function setupDrag(src) {
 
 /* ---------- sheets ---------- */
 let sheetEl = null, backdropEl = null;
-function openSheet(html) {
+function openSheet(html, cls = '') {
   closeSheet(true);
   backdropEl = document.createElement('div'); backdropEl.className = 'backdrop';
-  sheetEl = document.createElement('div'); sheetEl.className = 'sheet'; sheetEl.setAttribute('role', 'dialog'); sheetEl.setAttribute('aria-modal', 'true');
+  sheetEl = document.createElement('div'); sheetEl.className = 'sheet ' + cls; sheetEl.setAttribute('role', 'dialog'); sheetEl.setAttribute('aria-modal', 'true');
   sheetEl.innerHTML = `<div class="grab"></div>${html}`;
   backdropEl.onclick = () => closeSheet();
   document.body.append(backdropEl, sheetEl);
@@ -519,39 +551,114 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetEl)
 const closeBtn = `<button class="icon-btn" data-close aria-label="Закрыть">${icon('x')}</button>`;
 
 /* --- add / edit expense --- */
+function dateLabel(ds) {
+  if (ds === today()) return 'Сегодня';
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (ds === dateStr(y)) return 'Вчера';
+  const [Y, M, D] = ds.split('-').map(Number);
+  const opts = { day: 'numeric', month: 'short' };
+  if (Y !== new Date().getFullYear()) opts.year = 'numeric';
+  return new Date(Y, M - 1, D).toLocaleDateString('ru-RU', opts).replace(/\./g, '').replace(/\s?г$/, '');
+}
+const fmtAmountStr = (str) => {
+  const [i, f] = str.split(',');
+  const int = (i || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return f === undefined ? int : int + ',' + f;
+};
 function openTx({ id = null, catId = null, back = null }) {
   const t = id ? S.tx.find((x) => x.id === id) : null;
   const isEdit = !!t;
   let cat = t ? t.cat : catId;
-  const quick = !isEdit && !catId; // amount first, then tap category = saved
+  const quick = !isEdit && !catId; // amount first, then a tap on a category saves it
   const cur = ymOf(today());
   const defDate = view === cur ? today() : `${view}-${pad(daysIn(view))}`;
   const cats = visibleCats(view).concat(t && !visibleCats(view).some((c) => c.id === t.cat) ? [catById(t.cat)].filter(Boolean) : []);
-  const preset = cat && catById(cat);
+  let amt = t ? String(t.amount).replace('.', ',') : '';
+  let date = t ? t.date : defDate;
+
+  const headHtml = () => {
+    if (quick) return `<h2>Новая трата</h2>`;
+    const c = catById(cat);
+    return `<button class="cat-head" id="tx-change" aria-label="Сменить категорию">${disc({ iconName: c.icon, color: c.color })}<h2>${esc(c.name)}</h2><span class="chg">сменить</span></button>`;
+  };
+  const keys = [',', '0', 'del'];
+  const keypad = ['1', '2', '3', keys[0], '4', '5', '6', keys[1], '7', '8', '9', keys[2]]
+    .map((k) => k === 'del'
+      ? `<button class="f" data-k="del" aria-label="Стереть">${icon('backspace')}</button>`
+      : `<button class="${k === ',' ? 'f' : ''}" data-k="${k}">${k}</button>`).join('');
   const s = openSheet(`
-    <div class="sheet-head">
-      ${preset && !isEdit ? disc({ iconName: preset.icon, color: preset.color }) : ''}
-      <h2>${isEdit ? 'Изменить трату' : preset ? esc(preset.name) : 'Новая трата'}</h2>${closeBtn}
+    <div class="sheet-head" id="tx-head">${headHtml()}${closeBtn}</div>
+    <div class="amt-row">
+      <div class="amt" aria-label="Сумма" role="textbox" aria-readonly="true"><b class="num" id="tx-amt"></b><span class="cur">₽</span></div>
+      <label class="datechip"><span id="tx-date-label"></span>${icon('chevron-down')}<input type="date" id="tx-date" value="${date}" aria-label="Дата"></label>
     </div>
-    <label class="amount"><input id="tx-amount" class="num" inputmode="decimal" autocomplete="off" placeholder="0" value="${t ? String(t.amount).replace('.', ',') : ''}" aria-label="Сумма"><span>₽</span></label>
-    <div class="row">
-      <label class="field date"><span>Дата</span><input class="input" type="date" id="tx-date" value="${t ? t.date : defDate}"></label>
-      <label class="field"><span>Комментарий</span><input class="input" id="tx-comment" placeholder="Необязательно" value="${esc(t ? t.comment : '')}"></label>
-    </div>
-    <div class="sub" id="tx-hint">${quick ? 'Введите сумму и нажмите на категорию — трата сохранится' : 'Категория'}</div>
-    <div class="pick" id="tx-cats">${cats.map((c) => `<button data-c="${c.id}" aria-pressed="${c.id === cat}">${disc({ iconName: c.icon, color: c.color })}<small>${esc(c.name)}</small></button>`).join('')}</div>
-    <div class="actions">
-      ${quick ? '' : `<button class="btn primary" id="tx-save">${isEdit ? 'Сохранить' : 'Записать трату'}</button>`}
+    <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
+    ${quick ? `<div class="sub tight">Наберите сумму и нажмите на категорию — трата сохранится</div>` : ''}
+    <div class="pick" id="tx-cats" ${quick ? '' : 'hidden'}>${cats.map((c) => `<button data-c="${c.id}" aria-pressed="${c.id === cat}">${disc({ iconName: c.icon, color: c.color })}<small>${esc(c.name)}</small></button>`).join('')}</div>
+    ${quick ? '' : `<div class="actions">
+      <button class="btn primary" id="tx-save">${isEdit ? 'Сохранить' : 'Записать трату'}</button>
       ${isEdit ? `<button class="btn danger" id="tx-del">${icon('x')} Удалить трату</button>` : ''}
-    </div>`);
-  const amountEl = $('#tx-amount', s);
-  amountEl.focus();
+    </div>`}
+    <div class="keypad" id="tx-keys">${keypad}</div>`, 'txs');
+
+  const amtEl = $('#tx-amt', s), commentEl = $('#tx-comment', s), dateEl = $('#tx-date', s);
+  const paint = () => {
+    amtEl.classList.toggle('empty', !amt);
+    amtEl.innerHTML = (amt ? fmtAmountStr(amt) : '0') + '<i class="caret"></i>';
+    $('#tx-date-label', s).textContent = dateLabel(date);
+  };
+  const press = (k) => {
+    if (k === 'del') amt = amt.slice(0, -1);
+    else if (k === ',') { if (!amt.includes(',')) amt = (amt || '0') + ','; }
+    else {
+      const [i, f] = amt.split(',');
+      if (f !== undefined) { if (f.length < 2) amt += k; }
+      else if (amt === '0') amt = k;
+      else if (i.length < 7) amt += k;
+    }
+    paint();
+  };
+  paint();
+
+  // keypad: pointerdown for instant response; holding ⌫ clears the amount
+  let holdTimer = null;
+  $('#tx-keys', s).addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    e.preventDefault();
+    if (document.activeElement === commentEl) commentEl.blur();
+    press(b.dataset.k);
+    if (b.dataset.k === 'del') holdTimer = setTimeout(() => { amt = ''; paint(); }, 550);
+  });
+  const stopHold = () => clearTimeout(holdTimer);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('#tx-keys', s).addEventListener(ev, stopHold));
+
+  // physical keyboard (desktop)
+  const onKey = (e) => {
+    if (!s.isConnected) { document.removeEventListener('keydown', onKey); return; }
+    if (document.activeElement === commentEl || document.activeElement === dateEl) return;
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === ',' || e.key === '.') press(',');
+    else if (e.key === 'Backspace') press('del');
+    else if (e.key === 'Enter' && !quick) commit();
+    else return;
+    e.preventDefault();
+  };
+  document.addEventListener('keydown', onKey);
+
+  // comment: the iOS keyboard replaces our keypad while typing
+  commentEl.addEventListener('focus', () => s.classList.add('typing'));
+  commentEl.addEventListener('blur', () => s.classList.remove('typing'));
+  commentEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commentEl.blur(); } });
+
+  // date chip: transparent native date input on top opens the system picker
+  dateEl.addEventListener('click', () => { try { dateEl.showPicker && dateEl.showPicker(); } catch (_) {} });
+  dateEl.addEventListener('change', () => { date = dateEl.value || defDate; paint(); });
+
   const commit = () => {
-    const amount = parseAmount(amountEl.value);
-    if (!(amount > 0)) { amountEl.focus(); toast('Введите сумму больше нуля'); return false; }
+    const amount = Math.round(parseFloat((amt || '0').replace(',', '.')) * 100) / 100;
+    if (!(amount > 0)) { toast('Наберите сумму'); return false; }
     if (!cat) { toast('Выберите категорию'); return false; }
-    const date = $('#tx-date', s).value || defDate;
-    const comment = $('#tx-comment', s).value.trim();
+    const comment = commentEl.value.trim();
     if (isEdit) Object.assign(t, { amount, date, comment, cat, demo: false });
     else S.tx.push({ id: uid(), cat, amount, date, comment });
     save();
@@ -561,15 +668,22 @@ function openTx({ id = null, catId = null, back = null }) {
     if (back) setTimeout(back, 260);
     return true;
   };
-  $('#tx-cats', s).onclick = (e) => {
+
+  const pickEl = $('#tx-cats', s);
+  const bindHead = () => { const ch = $('#tx-change', s); if (ch) ch.onclick = () => { pickEl.hidden = !pickEl.hidden; }; };
+  bindHead();
+  pickEl.onclick = (e) => {
     const b = e.target.closest('[data-c]'); if (!b) return;
     cat = b.dataset.c;
     s.querySelectorAll('#tx-cats [data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b));
-    if (quick) commit();
+    if (quick) { commit(); return; }
+    pickEl.hidden = true;
+    $('#tx-head', s).innerHTML = headHtml() + closeBtn;
+    $('#tx-head [data-close]', s).onclick = () => closeSheet();
+    bindHead();
   };
   const saveBtn = $('#tx-save', s);
   if (saveBtn) saveBtn.onclick = commit;
-  amountEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !quick) commit(); });
   const del = $('#tx-del', s);
   if (del) del.onclick = () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Нажмите ещё раз, чтобы удалить'; return; }
