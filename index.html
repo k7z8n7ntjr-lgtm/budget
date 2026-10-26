@@ -26,6 +26,8 @@
   --track: #E6E9E4;
   --accent: #24584A;
   --accent-ink: #FFFFFF;
+  --level-light: #DCE7E0;
+  --level-ink: #1F3B32;
   --danger: #D2382A;
   --danger-tint: #FCE9E6;
   --ok: #2F9A5B;
@@ -69,20 +71,20 @@ button:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2p
 .demo { display: flex; align-items: center; gap: 12px; justify-content: space-between; background: #FFF6DD; color: #6A5312; border-radius: 14px; padding: 10px 12px; font-size: 13px; }
 .demo button { font-weight: 600; white-space: nowrap; color: #6A5312; text-decoration: underline; }
 
-/* budget card */
-.budget { background: var(--surface); border-radius: 20px; padding: 12px 14px; display: flex; align-items: center; gap: 14px; }
-.budget-src { position: relative; flex: none; width: 64px; height: 64px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-radius: 50%; }
-.budget-src .disc-in { background: var(--accent); color: var(--accent-ink); }
-.budget-src.lifted { transform: scale(.92); opacity: .5; transition: transform .15s, opacity .15s; }
-.budget-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
-.remain { display: flex; flex-wrap: wrap-reverse; align-items: baseline; column-gap: 8px; }
-.remain.over .big, .remain.over .label { color: var(--danger); }
+/* Budget card as a level: dark fill = what is left of the month's budget, sinking as money is spent.
+   Two identical layers; the dark one is clipped to the fill height so text changes colour where the level crosses it. */
+.budget { display: block; }
+.bcard { position: relative; display: block; width: 100%; height: 138px; border-radius: 22px; overflow: hidden; text-align: left; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s, opacity .15s; }
+.bcard .layer { position: absolute; inset: 0; padding: 14px 18px 12px; display: flex; flex-direction: column; }
+.bcard .l1 { background: var(--level-light); color: var(--level-ink); }
+.bcard .l2 { background: var(--accent); color: #fff; }
+.bcard.over .l1 { background: var(--danger-tint); color: var(--danger); }
+.bcard .lab { font-size: 11px; letter-spacing: .09em; font-weight: 700; text-transform: uppercase; opacity: .8; }
+.bcard .big { font-family: var(--font-num); font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bcard .sp { font-size: 13px; margin-top: 4px; opacity: .85; font-variant-numeric: tabular-nums; }
+.bcard .hint { margin-top: auto; font-size: 12px; opacity: .72; line-height: 1.3; }
+.bcard.lifted { transform: scale(.97); opacity: .6; }
 .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-.big { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
-.stats { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: baseline; }
-.stats .mid { font-family: var(--font-num); font-size: 17px; font-weight: 600; color: #4E5551; letter-spacing: -0.01em; line-height: 1.3; }
-.stats .over { color: var(--danger); }
-.hint { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
 
 /* disc + ring (shared by budget and categories) */
 .disc { position: relative; display: block; width: 100%; height: 100%; }
@@ -92,21 +94,24 @@ button:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2p
 .disc.nolimit .disc-in { background: var(--track); }
 .disc.over .disc-in { background: var(--danger-tint); }
 
-/* category grid */
-/* Grid fills what is left of the screen; circles scale with the height, and only the grid scrolls once they hit the minimum. */
-.grid-wrap { flex: 1 1 auto !important; min-height: 0; container-type: size; }
-.grid { height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 4px; align-content: start; padding-bottom: 8px;
-  --d: clamp(48px, calc((100cqh - (var(--rows, 3) - 1) * 8px) / var(--rows, 3) - 78px), 76px); }
-.cat { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 6px 2px; border-radius: 16px; transition: background .12s, transform .12s; }
-.cat:active { background: var(--track); }
-.cat-name { font-size: 12px; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cat .disc { width: min(var(--d), calc(25cqw - 12px)); height: min(var(--d), calc(25cqw - 12px)); }
-.cat-spent { font-size: 15px; font-weight: 600; white-space: nowrap; }
-.cat-limit { font-size: 11px; color: var(--muted); white-space: nowrap; min-height: 14px; }
+/* category tiles: 2 columns; only the grid scrolls when there are many */
+.grid-wrap { flex: 1 1 auto !important; min-height: 0; }
+.grid { height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; padding-bottom: 10px; }
+.cat { background: var(--surface); border-radius: 16px; padding: 9px 12px 10px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; min-height: 70px; text-align: left; transition: transform .12s, box-shadow .12s; }
+.cat:active { transform: scale(.98); }
+.cat-name { display: flex; align-items: center; gap: 6px; font-size: 13.5px; min-width: 0; }
+.cat-name svg { width: 17px; height: 17px; flex: none; color: var(--c); }
+.cat-name span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-val { display: flex; align-items: baseline; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.cat-spent { font-size: 17px; font-weight: 700; }
+.cat-limit { font-size: 11.5px; color: var(--muted); }
 .cat.over .cat-spent, .cat.over .cat-limit { color: var(--danger); }
-.cat.drop { background: color-mix(in srgb, var(--accent) 12%, transparent); transform: scale(1.06); }
-.cat.add .disc-in { background: transparent; border: 2px dashed #C3C8C2; color: var(--muted); inset: 9%; }
-body.dragging .cat:not(.add) .disc-in { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line); }
+.pb { display: block; height: 4px; border-radius: 2px; background: var(--track); margin-top: auto; overflow: hidden; }
+.pb i { display: block; height: 100%; border-radius: 2px; }
+.cat.add { background: transparent; border: 1.5px dashed #C3C8C2; flex-direction: row; align-items: center; justify-content: center; gap: 6px; font-weight: 600; color: var(--muted); }
+.cat.add svg { width: 18px; height: 18px; }
+body.dragging .cat:not(.add) { box-shadow: 0 0 0 1.5px var(--line); }
+.cat.drop { box-shadow: 0 0 0 2px var(--accent) !important; transform: scale(1.03); }
 
 .ghost { position: fixed; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 24px; font-weight: 700; pointer-events: none; z-index: 50; box-shadow: 0 8px 24px rgba(20,40,30,.3); }
 
@@ -130,7 +135,7 @@ body.dragging .cat:not(.add) .disc-in { box-shadow: 0 0 0 2px var(--surface), 0 
 .grab-zone { flex: none; margin: -8px 0 -6px; padding: 8px 0 10px; touch-action: none; cursor: grab; }
 .grab { width: 36px; height: 5px; border-radius: 3px; background: #D5D9D4; margin: 0 auto; }
 .sheet-head { touch-action: none; }
-.sheet-head { display: flex; align-items: center; gap: 10px; }
+.sheet-head { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 .sheet-head h2 { font-size: 18px; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet-head .disc { width: 40px; height: 40px; flex: none; }
 
@@ -171,13 +176,17 @@ input[type=date].input { min-height: 44px; }
 .amt b.blank { color: #B9BEBA; }
 .amt .cur { margin-left: auto; font-size: 28px; line-height: 1; color: var(--muted); font-weight: 600; padding-bottom: 2px; }
 .caret { display: inline-block; width: 2px; height: 0.8em; background: var(--accent); margin-left: 2px; vertical-align: -0.04em; animation: blink 1s steps(1) infinite; }
-.typing .caret, .picking-date .caret { visibility: hidden; }
+.typing .caret { visibility: hidden; }
 @keyframes blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
-.datechip { flex: none; padding: 0 10px 0 14px; border-radius: 14px; background: var(--bg); display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.datechip svg { width: 16px; height: 16px; color: var(--muted); transition: transform .15s; }
-.datechip[aria-expanded=true] { background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
-.datechip[aria-expanded=true] svg { transform: rotate(180deg); }
+/* Date drum inside the chip: selected date in the middle, edges of the neighbours peek above/below. Older dates are above. */
+.datechip { position: relative; flex: none; width: 112px; height: 56px; border-radius: 14px; background: var(--bg); overflow: hidden; }
+.drum { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; padding-block: 17px;
+  -webkit-mask-image: linear-gradient(rgba(0,0,0,.4), #000 18px, #000 calc(100% - 18px), rgba(0,0,0,.4));
+  mask-image: linear-gradient(rgba(0,0,0,.4), #000 18px, #000 calc(100% - 18px), rgba(0,0,0,.4)); }
+.drum::-webkit-scrollbar { display: none; }
+.drum button { display: block; width: 100%; height: 22px; scroll-snap-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; transition: color .12s, font-size .12s; }
+.drum button.sel { font-size: 16px; font-weight: 600; color: var(--fg); }
 .pad-area { flex: none; background: var(--bg);
   margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
   padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
@@ -186,16 +195,6 @@ input[type=date].input { min-height: 44px; }
 .keypad button.f { background: var(--key); }
 .keypad button:active { background: var(--line); }
 .keypad svg { width: 24px; height: 24px; }
-/* date wheel: same footprint as the keypad; older dates above, today at the bottom */
-.wheel-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; height: 156px; }
-.wheel-wrap { position: relative; height: 156px; background: var(--surface); border-radius: 12px; overflow: hidden; }
-.wheel-wrap::before { content: ""; position: absolute; left: 6px; right: 6px; top: 60px; height: 36px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 11%, transparent); pointer-events: none; }
-.wheel { position: relative; height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; padding-block: 60px; scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); }
-.wheel::-webkit-scrollbar { display: none; }
-.wheel button { display: block; width: 100%; height: 36px; scroll-snap-align: center; font-family: var(--font-num); font-size: 19px; font-variant-numeric: tabular-nums; color: var(--muted); }
-.wheel button.sel { color: var(--fg); font-weight: 600; }
-.wheel-panel .done { min-height: 156px; width: 92px; border-radius: 12px; }
 .row-actions { flex-direction: row; }
 .row-actions .btn.primary { flex: 1; }
 .btn.icon-only { width: 50px; padding: 0; flex: none; background: var(--danger-tint); }
@@ -467,19 +466,15 @@ function render() {
   const budget = limitAt(S.budget, view);
   const over = budget != null && total > budget;
   const left = budget == null ? null : budget - total;
-  $('#budget').innerHTML = `
-    <button class="budget-src" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
-      ${disc({ iconName: 'landmark', pct: budget ? total / budget : null, ring: over ? 'var(--danger)' : 'var(--accent)' })}
-    </button>
-    <div class="budget-info">
-      <div class="stats">
-        ${budget != null
-          ? `<span class="big num ${over ? 'over' : ''}">${over ? '−' + rub(-left) : rub(left)}</span><span class="label ${over ? 'over' : ''}">${over ? 'Перерасход' : 'Осталось'}</span>
-             <span class="mid num">${rub(total)}</span><span class="label">Потрачено</span>`
-          : `<span class="big num">${rub(total)}</span><span class="label">Потрачено</span>`}
-      </div>
-      <span class="hint">Перетащите кружок на категорию, чтобы записать трату</span>
-    </div>`;
+  const cardBody = (lab, big, sp) => `<span class="lab">${lab}</span><span class="big">${big}</span><span class="sp">${sp}</span><span class="hint">Перетащите карточку на категорию, чтобы записать трату</span>`;
+  let body, level = null;
+  if (budget == null) body = cardBody('Потрачено', rub(total), 'Бюджет на месяц не задан');
+  else if (over) body = cardBody('Перерасход', '−' + rub(-left), `потрачено ${rub(total)} из ${rub(budget)}`);
+  else { body = cardBody('Осталось', rub(left), `потрачено ${rub(total)} из ${rub(budget)}`); level = left / budget; }
+  $('#budget').innerHTML = `<button class="bcard ${over ? 'over' : ''}" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
+    <span class="layer l1">${body}</span>
+    ${level != null ? `<span class="layer l2" aria-hidden="true" style="clip-path: inset(${((1 - level) * 100).toFixed(2)}% 0 0 0)">${body}</span>` : ''}
+  </button>`;
   setupDrag($('#budget-src'));
 
   // categories
@@ -488,19 +483,15 @@ function render() {
     const spent = spentBy[c.id] || 0;
     const limit = limitAt(c.limits, view);
     const col = STATE_COLOR[catState(c, spent, limit, view)];
-    const sub = limit == null ? '' : spent > limit ? `+${rub(spent - limit)}` : rub(limit);
-    return `<button class="cat ${spent > (limit ?? Infinity) ? 'over' : ''}" data-cat="${c.id}">
-      <span class="cat-name">${esc(c.name)}</span>
-      ${disc({ iconName: c.icon, color: col, pct: limit == null ? null : spent / limit, ring: col })}
-      <span class="cat-spent num">${rub(spent)}</span>
-      <span class="cat-limit num">${sub}</span>
+    const isOver = limit != null && spent > limit;
+    const sub = limit == null ? '' : isOver ? `+${rub(spent - limit)}` : `/ ${rub(limit)}`;
+    const pct = limit == null ? 0 : Math.min(100, spent / limit * 100);
+    const bar = limit == null ? '' : `<span class="pb"><i style="width:${spent > 0 ? Math.max(pct, 3).toFixed(1) : 0}%;background:${col}"></i></span>`;
+    return `<button class="cat ${isOver ? 'over' : ''}" data-cat="${c.id}" style="--c:${col}">
+      <span class="cat-name">${icon(c.icon)}<span>${esc(c.name)}</span></span>
+      <span class="cat-val"><span class="cat-spent num">${rub(spent)}</span><span class="cat-limit num">${sub}</span></span>${bar}
     </button>`;
-  }).join('') + `<button class="cat add" id="add-cat">
-      <span class="cat-name">Категория</span>
-      ${disc({ inner: icon('plus') })}
-      <span class="cat-spent">&nbsp;</span><span class="cat-limit"></span>
-    </button>`;
-  $('#grid-wrap').style.setProperty('--rows', Math.ceil((cats.length + 1) / 4));
+  }).join('') + `<button class="cat add" id="add-cat">${icon('plus')} Категория</button>`;
   $('#grid').querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => openCategory(b.dataset.cat));
   $('#add-cat').onclick = () => openCategoryEdit(null);
 }
@@ -563,7 +554,6 @@ function openSheet(html, cls = '') {
   sheetEl.innerHTML = `<div class="grab-zone"><div class="grab"></div></div>${html}`;
   backdropEl.onclick = () => closeSheet();
   document.body.append(backdropEl, sheetEl);
-  setDim(true);
   enableSwipeClose(sheetEl);
   requestAnimationFrame(() => { backdropEl.classList.add('on'); sheetEl.classList.add('on'); });
   sheetEl.querySelectorAll('[data-close]').forEach((b) => b.onclick = () => closeSheet());
@@ -574,17 +564,11 @@ function closeSheet(instant) {
   sheetEl = backdropEl = null;
   if (!s) return;
   if (instant) { s.remove(); b.remove(); return; }
-  setDim(false);
   s.style.transition = ''; s.style.transform = '';
   s.classList.remove('on'); b.classList.remove('on');
   setTimeout(() => { s.remove(); b.remove(); }, 250);
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetEl) closeSheet(); });
-// While a sheet is open, tint the status bar area like the dimmed page.
-const themeMeta = document.querySelector('meta[name="theme-color"]');
-function setDim(on) {
-  if (themeMeta) themeMeta.setAttribute('content', on ? '#ACAEAB' : '#F3F4F1');
-}
 // Pull the sheet down by its handle or header to close it.
 function enableSwipeClose(sh) {
   let y0 = null, dy = 0, t0 = 0;
@@ -610,7 +594,7 @@ function enableSwipeClose(sh) {
   sh.addEventListener('pointerup', end);
   sh.addEventListener('pointercancel', end);
 }
-const closeBtn = `<button class="icon-btn" data-close aria-label="Закрыть">${icon('x')}</button>`;
+const closeBtn = '';
 
 /* --- add / edit expense --- */
 const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -649,7 +633,7 @@ function openTx({ id = null, catId = null, back = null }) {
   let amt = t ? String(t.amount).replace('.', ',') : '';
   let date = t ? t.date : defDate;
   const days = wheelDates(date);
-  const ROW = 36;
+  const ROW = 22;
 
   const keypad = ['1', '2', '3', ',', '4', '5', '6', '0', '7', '8', '9', 'del']
     .map((k) => k === 'del'
@@ -659,7 +643,7 @@ function openTx({ id = null, catId = null, back = null }) {
     <div class="sheet-head"><h2 id="tx-title"></h2>${closeBtn}</div>
     <div class="amt-row">
       <div class="amt" id="tx-amt-box" aria-label="Сумма" role="textbox" aria-readonly="true"><b class="num" id="tx-amt"></b><span class="cur">₽</span></div>
-      <button class="datechip" id="tx-date-btn" aria-expanded="false" aria-label="Дата"><span id="tx-date-label"></span>${icon('chevron-down')}</button>
+      <div class="datechip" aria-label="Дата. Прокрутите вниз, чтобы выбрать более раннюю"><div class="drum" id="tx-drum">${days.map((d) => `<button data-d="${d}" tabindex="-1">${dateLabel(d)}</button>`).join('')}</div></div>
     </div>
     <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
     <div class="pick" id="tx-cats">${cats.map((c) => `<button data-c="${c.id}" aria-pressed="${c.id === cat}">${disc({ iconName: c.icon, color: NEUTRAL })}<small>${esc(c.name)}</small></button>`).join('')}</div>
@@ -669,22 +653,17 @@ function openTx({ id = null, catId = null, back = null }) {
     </div>
     <div class="pad-area">
       <div class="keypad" id="tx-keys">${keypad}</div>
-      <div class="wheel-panel" id="tx-wheel-panel" hidden>
-        <div class="wheel-wrap"><div class="wheel" id="tx-wheel">${days.map((d) => `<button data-d="${d}" tabindex="-1">${shortDate(d)}</button>`).join('')}</div></div>
-        <button class="btn primary done" id="tx-wheel-done">Готово</button>
-      </div>
     </div>`, 'txs');
 
   const amtEl = $('#tx-amt', s), commentEl = $('#tx-comment', s), saveBtn = $('#tx-save', s);
-  const dateBtn = $('#tx-date-btn', s), wheelPanel = $('#tx-wheel-panel', s), wheel = $('#tx-wheel', s), keysEl = $('#tx-keys', s);
+  const drum = $('#tx-drum', s), keysEl = $('#tx-keys', s);
   const amountValue = () => Math.round(parseFloat((amt || '0').replace(',', '.')) * 100) / 100;
   const paint = () => {
     amtEl.classList.toggle('blank', !amt);
     amtEl.innerHTML = (amt ? fmtAmountStr(amt) : '0') + '<i class="caret"></i>';
-    $('#tx-date-label', s).textContent = dateLabel(date);
     const c = cat && catById(cat);
     $('#tx-title', s).innerHTML = (isEdit ? 'Изменить расход' : 'Введите расход') +
-      (c ? `<span class="arrow">${icon('arrow-right')}</span>${disc({ iconName: c.icon, color: NEUTRAL })}<span class="tname">${esc(c.name)}</span>` : '');
+      (c ? `<span class="arrow">${icon('arrow-right')}</span><span class="tname">${esc(c.name)}</span>` : '');
     saveBtn.disabled = !(amountValue() > 0 && cat);
   };
   const press = (k) => {
@@ -712,32 +691,18 @@ function openTx({ id = null, catId = null, back = null }) {
   const stopHold = () => clearTimeout(holdTimer);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => keysEl.addEventListener(ev, stopHold));
 
-  // date wheel replaces the keypad while open
-  const marks = () => wheel.querySelectorAll('[data-d]');
-  const centerIdx = () => Math.max(0, Math.min(days.length - 1, Math.round(wheel.scrollTop / ROW)));
-  const showWheel = (on) => {
-    wheelPanel.hidden = !on; keysEl.hidden = on;
-    dateBtn.setAttribute('aria-expanded', on);
-    s.classList.toggle('picking-date', on);
-    if (on) {
-      wheel.scrollTop = days.indexOf(date) * ROW;
-      marks().forEach((b) => b.classList.toggle('sel', b.dataset.d === date));
-    }
-  };
-  dateBtn.onclick = () => { if (document.activeElement === commentEl) commentEl.blur(); showWheel(wheelPanel.hidden); };
-  $('#tx-amt-box', s).onclick = () => showWheel(false);
-  $('#tx-wheel-done', s).onclick = () => showWheel(false);
-  wheel.addEventListener('scroll', () => {
-    const i = centerIdx();
-    if (days[i] !== date) {
-      date = days[i];
-      marks().forEach((b, j) => b.classList.toggle('sel', j === i));
-      $('#tx-date-label', s).textContent = dateLabel(date);
-    }
+  // date drum: scroll inside the chip; the centred row is the date
+  const marks = () => drum.querySelectorAll('[data-d]');
+  const markSel = () => marks().forEach((b) => b.classList.toggle('sel', b.dataset.d === date));
+  const centerIdx = () => Math.max(0, Math.min(days.length - 1, Math.round(drum.scrollTop / ROW)));
+  requestAnimationFrame(() => { drum.scrollTop = days.indexOf(date) * ROW; markSel(); });
+  drum.addEventListener('scroll', () => {
+    const d = days[centerIdx()];
+    if (d !== date) { date = d; markSel(); }
   }, { passive: true });
-  wheel.onclick = (e) => {
+  drum.onclick = (e) => {
     const b = e.target.closest('[data-d]'); if (!b) return;
-    wheel.scrollTo({ top: days.indexOf(b.dataset.d) * ROW, behavior: 'smooth' });
+    drum.scrollTo({ top: days.indexOf(b.dataset.d) * ROW, behavior: 'smooth' });
   };
 
   // physical keyboard (desktop)
@@ -754,7 +719,7 @@ function openTx({ id = null, catId = null, back = null }) {
   document.addEventListener('keydown', onKey);
 
   // comment: the iOS keyboard replaces our keypad while typing
-  commentEl.addEventListener('focus', () => { showWheel(false); s.classList.add('typing'); });
+  commentEl.addEventListener('focus', () => s.classList.add('typing'));
   commentEl.addEventListener('blur', () => s.classList.remove('typing'));
   commentEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commentEl.blur(); } });
 
