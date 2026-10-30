@@ -157,6 +157,16 @@ input[type=date].input { min-height: 44px; }
 .pick button[aria-pressed=true] { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .pick button[aria-pressed=true] .disc-in { background: var(--accent); color: var(--accent-ink); }
 .pick button[aria-pressed=true] small { color: var(--fg); font-weight: 600; }
+/* Category chips in the expense sheet: flat, neutral, in 2–3 rows that scroll sideways together, edge to edge */
+.chips { flex: none; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x;
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding: 2px max(16px, env(safe-area-inset-right, 0px)) 2px max(16px, env(safe-area-inset-left, 0px)); }
+.chips::-webkit-scrollbar { display: none; }
+.chips-in { display: flex; flex-direction: column; gap: 8px; width: max-content; }
+.chips-row { display: flex; gap: 8px; }
+.chip { height: 38px; padding: 0 15px; border-radius: 19px; background: var(--bg); border: 1px solid var(--line); color: var(--fg); font-size: 15px; font-weight: 500; white-space: nowrap; transition: background .12s, color .12s; }
+.chip:active { background: var(--line); }
+.chip[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .sub { font-size: 13px; color: var(--muted); }
 .sub.tight { font-size: 12px; margin-top: -4px; }
 
@@ -623,6 +633,16 @@ const fmtAmountStr = (str) => {
   const int = (i || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return f === undefined ? int : int + ',' + f;
 };
+// Spread categories over up to 3 rows, keeping their order and evening out the row widths.
+function chipRows(cats) {
+  const n = cats.length <= 4 ? 1 : cats.length <= 8 ? 2 : 3;
+  const rows = Array.from({ length: n }, () => ({ w: 0, items: [] }));
+  for (const c of cats) {
+    const r = rows.reduce((a, b) => (b.w < a.w ? b : a));
+    r.items.push(c); r.w += c.name.length * 8.5 + 38;
+  }
+  return rows.map((r) => r.items);
+}
 function openTx({ id = null, catId = null, back = null }) {
   const t = id ? S.tx.find((x) => x.id === id) : null;
   const isEdit = !!t;
@@ -646,7 +666,7 @@ function openTx({ id = null, catId = null, back = null }) {
       <div class="datechip" aria-label="Дата. Прокрутите вниз, чтобы выбрать более раннюю"><div class="drum" id="tx-drum">${days.map((d) => `<button data-d="${d}" tabindex="-1">${dateLabel(d)}</button>`).join('')}</div></div>
     </div>
     <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
-    <div class="pick" id="tx-cats">${cats.map((c) => `<button data-c="${c.id}" aria-pressed="${c.id === cat}">${disc({ iconName: c.icon, color: NEUTRAL })}<small>${esc(c.name)}</small></button>`).join('')}</div>
+    <div class="chips" id="tx-cats"><div class="chips-in">${chipRows(cats).map((row) => `<div class="chips-row">${row.map((c) => `<button class="chip" data-c="${c.id}" aria-pressed="${c.id === cat}">${esc(c.name)}</button>`).join('')}</div>`).join('')}</div></div>
     <div class="actions ${isEdit ? 'row-actions' : ''}">
       ${isEdit ? `<button class="btn icon-only danger" id="tx-del" aria-label="Удалить трату">${icon('trash')}</button>` : ''}
       <button class="btn primary" id="tx-save" disabled>${isEdit ? 'Сохранить' : 'Записать трату'}</button>
@@ -743,6 +763,11 @@ function openTx({ id = null, catId = null, back = null }) {
     paint();
   };
   saveBtn.onclick = commit;
+  const pre = cat && s.querySelector(`#tx-cats [data-c="${cat}"]`);
+  if (pre) requestAnimationFrame(() => {
+    const box = $('#tx-cats', s);
+    box.scrollLeft = Math.max(0, pre.offsetLeft - (box.clientWidth - pre.offsetWidth) / 2);
+  });
   const del = $('#tx-del', s);
   if (del) del.onclick = () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); toast('Нажмите ещё раз, чтобы удалить'); return; }
