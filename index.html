@@ -197,7 +197,7 @@ input[type=date].input { min-height: 44px; }
 @keyframes blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
 /* Date drum inside the chip: selected date in the middle, edges of the neighbours peek above/below. Older dates are above. */
-.datechip { position: relative; flex: none; width: 112px; height: 56px; border-radius: 14px; background: var(--bg); overflow: hidden; }
+.datechip { position: relative; flex: none; width: 144px; height: 56px; border-radius: 14px; background: var(--bg); overflow: hidden; }
 .drum { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; padding-block: 17px;
   -webkit-mask-image: linear-gradient(rgba(0,0,0,.4), #000 18px, #000 calc(100% - 18px), rgba(0,0,0,.4));
   mask-image: linear-gradient(rgba(0,0,0,.4), #000 18px, #000 calc(100% - 18px), rgba(0,0,0,.4)); }
@@ -271,6 +271,93 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
 textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 
 /* Toast: a small light pill in the header row, in place of the month name */
+/* ---------- tags: button + menu in the expense form ---------- */
+.cmt-row { display: flex; gap: 10px; align-items: stretch; }
+.cmt-row .input { flex: 1; min-width: 0; height: 42px; }
+.tagbtn { flex: none; width: 144px; height: 42px; border-radius: 12px; background: #F2F2F0; border: 1px solid #E6E6E3; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; color: var(--muted); font-size: 15px; min-width: 0; }
+.tagbtn svg { width: 16px; height: 16px; flex: none; }
+.tagbtn .tb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.tagbtn.on { background: #E7EFEA; border-color: #2F5446; color: #2F5446; font-weight: 600; }
+.tagbtn.on svg path { fill: currentColor; }
+.tagbtn.on svg circle { fill: #E7EFEA; stroke: #E7EFEA; }
+.tagbtn .tb-more { flex: none; font-size: 12px; font-weight: 700; background: #2F5446; color: #fff; border-radius: 8px; padding: 1px 6px; }
+.tmenu { position: fixed; z-index: 30; width: 200px; background: var(--surface); border-radius: 14px; box-shadow: 0 12px 32px rgba(16,30,22,.2), 0 0 0 1px rgba(0,0,0,.05); display: flex; flex-direction: column; overflow: hidden; animation: tmin .16s ease-out; }
+@keyframes tmin { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .tmenu { animation: none; } }
+.tlist { flex: 0 1 auto; min-height: 0; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.trow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px; border-radius: 10px; font-size: 15px; text-align: left; color: var(--fg); }
+.trow span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.trow svg { width: 18px; height: 18px; flex: none; color: #2F5446; }
+.trow[aria-selected=true] { background: #EEF3F0; font-weight: 600; }
+.tfoot { flex: none; border-top: 1px solid var(--line); padding: 4px; }
+.tmi { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 10px; border-radius: 10px; font-size: 15px; text-align: left; }
+.tmi svg { width: 18px; height: 18px; flex: none; }
+.tmi.tnew { color: var(--accent); }
+.tmi.tnew:disabled { color: #A8AEAA; cursor: default; }
+.tmi.tcfg { color: var(--muted); }
+.tlimit { font-size: 12px; color: var(--muted); padding: 0 10px 6px; }
+.tempty { display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 6px; }
+.tempty b { font-size: 15px; }
+.tempty span { font-size: 13px; color: var(--muted); }
+.tcreate { display: flex; flex-direction: column; gap: 6px; padding: 6px; }
+.tinput { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg); outline: none; -webkit-appearance: none; appearance: none; }
+.tinput.err { border-color: var(--danger); }
+.tmeta { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; min-height: 15px; }
+.terr { color: var(--danger); }
+.tcount { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.tcount.max { color: var(--danger); }
+.tpick { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border-radius: 10px; background: #E7EFEA; color: #2F5446; font-size: 14px; font-weight: 600; text-align: left; }
+.tpick svg { width: 16px; height: 16px; flex: none; }
+.tpick svg path { fill: currentColor; }
+.tpick span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.sm { min-height: 40px; font-size: 15px; border-radius: 10px; }
+
+/* ---------- tags page (full screen, slides in from the right) ---------- */
+.page { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); transform: translateX(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+.page.on { transform: none; }
+@media (prefers-reduced-motion: reduce) { .page { transition: none; } }
+.page-bar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; min-height: 44px; padding: 8px max(8px, env(safe-area-inset-right, 0px)) 4px max(8px, env(safe-area-inset-left, 0px)); flex: none; }
+.page-bar h1 { grid-column: 2; justify-self: center; margin: 0; font-size: 20px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.page-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 12px; }
+.thint { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.4; }
+.tcard { background: var(--surface); border-radius: 16px; position: relative; }
+.tcard.empty-card { padding: 18px 16px; color: var(--muted); text-align: center; }
+.trow2 { display: flex; align-items: center; min-height: 56px; padding-right: 4px; background: var(--surface); position: relative; border-top: 1px solid var(--line); }
+.trow2:first-child { border-top: 0; border-radius: 16px 16px 0 0; }
+.trow2:last-child { border-radius: 0 0 16px 16px; }
+.trow2:only-child { border-radius: 16px; }
+.trow2.shift { transition: transform .22s cubic-bezier(.3,.7,.3,1); }
+.trow2.dragging { z-index: 3; border-radius: 12px; box-shadow: 0 10px 28px rgba(16,30,22,.18); transition: none; }
+.grip { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: #9AA09C; touch-action: none; cursor: grab; }
+.grip svg { width: 20px; height: 20px; }
+.tinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 8px 0; text-align: left; }
+.tinfo .tname { font-size: 16px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tinfo .tcnt { font-size: 13px; color: var(--muted); }
+.tact { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); border-radius: 12px; }
+.tact svg { width: 19px; height: 19px; }
+.tact.del { color: var(--danger); }
+.trow2.editing { align-items: flex-start; gap: 8px; padding: 8px 8px 8px 12px; }
+.tedit { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tadd-btn { min-height: 52px; border-radius: 16px; background: var(--surface); color: var(--accent); font-weight: 600; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tadd-btn svg { width: 20px; height: 20px; }
+.tadd-btn:disabled { color: #A8AEAA; cursor: default; }
+.tcard.create { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.tcard.create .row { display: flex; gap: 8px; }
+.tcard.create .row .btn { flex: 1; }
+.setrow { display: flex; align-items: center; gap: 8px; min-height: 48px; font-size: 16px; text-align: left; width: 100%; }
+.setrow .grow { flex: 1; }
+.setrow .sub { font-variant-numeric: tabular-nums; }
+.setrow svg { width: 20px; height: 20px; color: var(--muted); }
+.confirm { position: fixed; inset: 0; z-index: 50; }
+.confirm .cbg { position: absolute; inset: 0; background: rgba(20,24,22,.32); animation: cfade .2s ease-out; }
+.confirm .csheet { position: absolute; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; background: var(--surface); border-radius: 22px 22px 0 0; padding: 20px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 8px; animation: cup .28s cubic-bezier(.32,.72,0,1); }
+.confirm h3 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.confirm p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.confirm .cdel { background: var(--danger); color: #fff; }
+@keyframes cfade { from { opacity: 0; } }
+@keyframes cup { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .confirm .cbg, .confirm .csheet { animation: none; } }
+
 .toast { position: fixed; left: 50%; top: 40px; transform: translate(-50%, -50%); background: #fff; color: var(--fg); padding: 6px 12px; border-radius: 12px; box-shadow: 0 8px 24px rgba(16,30,22,.16); font-size: 14px; font-weight: 600; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; z-index: 60; pointer-events: none; font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -347,6 +434,8 @@ const ICONS = {
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   'check': '<path d="M20 6 9 17l-5-5"/>',
+  'tag': '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
+  'grip': '<line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="17" y2="17"/>',
   'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
   'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
 };
@@ -427,10 +516,10 @@ function seed() {
     [9, 7270, 17, 'Билеты на поезд'],
   ];
   const tx = ex.map(([c, amount, dd, comment]) => ({ id: uid(), cat: cats[c].id, amount, date: day(dd), comment, demo: true }));
-  return { v: 1, budget: { [ym]: 150000 }, categories: cats, tx, settings: { pace: false } };
+  return { v: 1, budget: { [ym]: 150000 }, categories: cats, tx, tags: [], settings: { pace: false } };
 }
 function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.categories) && Array.isArray(d.tx)) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.categories) && Array.isArray(d.tx)) { if (!Array.isArray(d.tags)) d.tags = []; return d; } } } catch (e) {}
   const s = seed(); S = s; save(); return s;
 }
 function save() {
@@ -578,6 +667,7 @@ function setupDrag(src) {
 
 /* ---------- sheets ---------- */
 let sheetEl = null, backdropEl = null;
+let closeTagMenu = null, pageEl = null;
 function openSheet(html, cls = '') {
   closeSheet(true);
   backdropEl = document.createElement('div'); backdropEl.className = 'backdrop';
@@ -591,6 +681,7 @@ function openSheet(html, cls = '') {
   return sheetEl;
 }
 function closeSheet(instant) {
+  if (closeTagMenu) closeTagMenu();
   const s = sheetEl, b = backdropEl;
   sheetEl = backdropEl = null;
   if (!s) return;
@@ -599,7 +690,14 @@ function closeSheet(instant) {
   s.classList.remove('on'); b.classList.remove('on');
   setTimeout(() => { s.remove(); b.remove(); }, 360);
 }
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetEl) closeSheet(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const cf = document.querySelector('.confirm');
+  if (cf) cf.remove();
+  else if (pageEl) pageEl._close();
+  else if (closeTagMenu) closeTagMenu();
+  else if (sheetEl) closeSheet();
+});
 // Pull the sheet down by its handle or header to close it.
 function enableSwipeClose(sh) {
   let y0 = null, dy = 0, t0 = 0;
@@ -686,7 +784,10 @@ function openTx({ id = null, catId = null, back = null }) {
       <div class="amt" id="tx-amt-box" aria-label="Сумма" role="textbox" aria-readonly="true"><b class="num" id="tx-amt"></b><span class="cur">₽</span></div>
       <div class="datechip" aria-label="Дата. Прокрутите вниз, чтобы выбрать более раннюю"><div class="drum" id="tx-drum">${days.map((d) => `<button data-d="${d}" tabindex="-1">${dateLabel(d)}</button>`).join('')}</div></div>
     </div>
-    <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
+    <div class="cmt-row">
+      <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
+      <button class="tagbtn" id="tx-tagbtn" aria-haspopup="true" aria-expanded="false"></button>
+    </div>
     <div class="chips" id="tx-cats"><div class="chips-in">${chipRows(cats).map((row) => `<div class="chips-row">${row.map((c) => `<button class="chip" data-c="${c.id}" aria-pressed="${c.id === cat}">${esc(c.name)}</button>`).join('')}</div>`).join('')}</div></div>
     <div class="pad-area">
       <div class="keypad" id="tx-keys">${keypad}</div>
@@ -743,10 +844,125 @@ function openTx({ id = null, catId = null, back = null }) {
     drum.scrollTo({ top: days.indexOf(b.dataset.d) * ROW, behavior: 'smooth' });
   };
 
+  // ---------- tags: button + menu ----------
+  let tags = (t && Array.isArray(t.tags) ? t.tags : []).filter((id) => tagById(id));
+  let creating = false, draft = '', menu = null;
+  const tagBtn = $('#tx-tagbtn', s);
+  const orderedSel = () => S.tags.filter((g) => tags.includes(g.id));
+  const paintTagBtn = () => {
+    const sel = orderedSel();
+    tagBtn.classList.toggle('on', sel.length > 0);
+    tagBtn.setAttribute('aria-label', sel.length ? 'Теги: ' + sel.map((g) => g.name).join(', ') : 'Выбрать тег');
+    tagBtn.innerHTML = sel.length
+      ? `${icon('tag')}<span class="tb-name">${esc(sel[0].name)}</span>${sel.length > 1 ? `<span class="tb-more">+${sel.length - 1}</span>` : ''}`
+      : `${icon('tag')}<span class="tb-name">Тег</span>${icon('chevron-down')}`;
+  };
+  paintTagBtn();
+  const placeMenu = () => {
+    if (!menu) return;
+    const r = tagBtn.getBoundingClientRect(), vv = window.visualViewport;
+    const vTop = vv ? vv.offsetTop : 0, vBot = vv ? vv.offsetTop + vv.height : innerHeight;
+    menu.style.left = Math.max(8, Math.min(r.right - 200, innerWidth - 208)) + 'px';
+    const below = vBot - r.bottom - 14, above = r.top - vTop - 14;
+    if (below >= 220 || below >= above) { menu.style.top = (r.bottom + 6) + 'px'; menu.style.bottom = 'auto'; menu.style.maxHeight = below + 'px'; }
+    else { menu.style.top = 'auto'; menu.style.bottom = (innerHeight - r.top + 6) + 'px'; menu.style.maxHeight = above + 'px'; }
+  };
+  const createHtml = () => `<div class="tcreate">
+      <input class="tinput" id="tm-input" maxlength="14" placeholder="Название" autocomplete="off" enterkeyhint="done" value="${esc(draft)}" aria-label="Название тега">
+      <div class="tmeta"><span class="terr" id="tm-err"></span><span class="tcount" id="tm-count"></span></div>
+      <button class="tpick" id="tm-pick" hidden></button>
+      <button class="btn primary sm" id="tm-add" disabled>Добавить</button>
+    </div>`;
+  const renderFoot = () => {
+    const foot = $('.tfoot', menu), atLimit = S.tags.length >= 15;
+    foot.innerHTML = (creating || !S.tags.length ? createHtml()
+      : `<button class="tmi tnew" id="tm-new" ${atLimit ? 'disabled' : ''}>${icon('plus')}Новый тег</button>${atLimit ? '<div class="tlimit">Максимум 15 тегов</div>' : ''}`)
+      + `<button class="tmi tcfg" id="tm-cfg">${icon('sliders')}Настроить</button>`;
+    const inp = $('#tm-input', menu);
+    if (inp) bindCreate(inp);
+    const nw = $('#tm-new', menu);
+    if (nw) nw.onclick = () => { creating = true; renderFoot(); placeMenu(); $('#tm-input', menu).focus(); };
+    $('#tm-cfg', menu).onclick = () => {
+      closeMenu();
+      openTagsPage({ onBack: () => { tags = tags.filter((id) => tagById(id)); paintTagBtn(); if (sheetEl === s) openMenu(); } });
+    };
+  };
+  const renderMenu = () => {
+    const keep = $('.tlist', menu) ? $('.tlist', menu).scrollTop : 0;
+    menu.innerHTML = (S.tags.length
+      ? `<div class="tlist" role="listbox" aria-multiselectable="true" aria-label="Теги">${S.tags.map((g) => `<button class="trow" role="option" data-tag="${g.id}" aria-selected="${tags.includes(g.id)}"><span>${esc(g.name)}</span>${tags.includes(g.id) ? icon('check') : ''}</button>`).join('')}</div>`
+      : `<div class="tempty"><b>Тегов пока нет</b><span>Помогут сгруппировать траты внутри категорий</span></div>`)
+      + `<div class="tfoot"></div>`;
+    renderFoot();
+    if ($('.tlist', menu)) $('.tlist', menu).scrollTop = keep;
+  };
+  function bindCreate(inp) {
+    const validate = () => {
+      const v = inp.value, nm = normTag(v);
+      const cnt = $('#tm-count', menu); cnt.textContent = `${v.length}/14`; cnt.classList.toggle('max', v.length >= 14);
+      const dup = nm ? S.tags.find((g) => tagKey(g.name) === tagKey(nm)) : null;
+      inp.classList.toggle('err', !!dup);
+      $('#tm-err', menu).textContent = dup ? 'Такой тег уже есть' : '';
+      const pick = $('#tm-pick', menu);
+      pick.hidden = !(dup && !tags.includes(dup.id));
+      if (!pick.hidden) { pick.innerHTML = `${icon('tag')}<span>Выбрать «${esc(dup.name)}»</span>`; pick.onclick = () => { tags.push(dup.id); creating = false; draft = ''; inp.blur(); paintTagBtn(); renderMenu(); placeMenu(); }; }
+      const add = $('#tm-add', menu);
+      add.disabled = !nm || !!dup || S.tags.length >= 15;
+      return { nm, ok: !add.disabled };
+    };
+    inp.addEventListener('input', () => { draft = inp.value; validate(); });
+    inp.addEventListener('focus', () => setTimeout(placeMenu, 300));
+    const doAdd = () => {
+      const { nm, ok } = validate(); if (!ok) return;
+      const g = { id: uid(), name: nm }; S.tags.push(g); save();
+      tags.push(g.id); creating = false; draft = '';
+      inp.blur(); paintTagBtn(); renderMenu(); placeMenu();
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doAdd(); } });
+    $('#tm-add', menu).onclick = doAdd;
+    validate();
+  }
+  const outside = (e) => { if (menu && !menu.contains(e.target) && !tagBtn.contains(e.target)) closeMenu(); };
+  function openMenu() {
+    if (menu) return;
+    menu = document.createElement('div'); menu.className = 'tmenu';
+    document.body.appendChild(menu);
+    // keep the name field focused (and the keyboard up) while tapping inside the menu
+    menu.addEventListener('pointerdown', (e) => { const a = document.activeElement; if (a && a.id === 'tm-input' && e.target.closest('button') && !e.target.closest('#tm-cfg, #tm-pick')) e.preventDefault(); });
+    menu.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-tag]'); if (!b) return;
+      const id = b.dataset.tag, on = !tags.includes(id);
+      tags = on ? tags.concat(id) : tags.filter((x) => x !== id);
+      b.setAttribute('aria-selected', on); b.innerHTML = `<span>${esc(tagById(id).name)}</span>${on ? icon('check') : ''}`;
+      paintTagBtn();
+      const inp = $('#tm-input', menu);
+      if (creating && inp && !inp.value.trim()) { creating = false; draft = ''; inp.blur(); renderFoot(); }
+      else if (inp) inp.dispatchEvent(new Event('input'));
+      placeMenu();
+    });
+    renderMenu(); placeMenu();
+    tagBtn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
+    closeTagMenu = closeMenu;
+    if (!S.tags.length) setTimeout(() => { const i = menu && $('#tm-input', menu); if (i) i.focus(); }, 50);
+  }
+  function closeMenu() {
+    if (!menu) return;
+    const inp = $('#tm-input', menu);
+    if (inp) { draft = inp.value; if (document.activeElement === inp) inp.blur(); }
+    if (!draft.trim()) { creating = false; draft = ''; }
+    menu.remove(); menu = null;
+    tagBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    if (closeTagMenu === closeMenu) closeTagMenu = null;
+  }
+  tagBtn.onclick = () => (menu ? closeMenu() : openMenu());
+  s._placeMenu = placeMenu;
+
   // physical keyboard (desktop)
   const onKey = (e) => {
     if (!s.isConnected) { document.removeEventListener('keydown', onKey); return; }
-    if (document.activeElement === commentEl) return;
+    if (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
     if (/^[0-9]$/.test(e.key)) press(e.key);
     else if (e.key === ',' || e.key === '.') press(',');
     else if (e.key === 'Backspace') press('del');
@@ -768,8 +984,9 @@ function openTx({ id = null, catId = null, back = null }) {
     done = true;
     const before = snapshot();
     const comment = commentEl.value.trim();
-    if (isEdit) Object.assign(t, { amount, date, comment, cat, demo: false });
-    else S.tx.push({ id: uid(), cat, amount, date, comment });
+    const tagIds = orderedSel().map((g) => g.id);
+    if (isEdit) Object.assign(t, { amount, date, comment, cat, tags: tagIds, demo: false });
+    else S.tx.push({ id: uid(), cat, amount, date, comment, tags: tagIds });
     save(); // data is written at once; the screen catches up after the sheet has gone
     saveBtn.classList.remove('pop'); void saveBtn.offsetWidth; saveBtn.classList.add('pop');
     setTimeout(() => closeSheet(), reduceMotion() ? 0 : 170);
@@ -988,6 +1205,144 @@ function openCategoryEdit(id) {
   };
 }
 
+/* --- tags --- */
+const tagById = (id) => S.tags.find((g) => g.id === id);
+const normTag = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+const tagKey = (v) => normTag(v).toLowerCase().replace(/ё/g, 'е');
+const tagCount = (id) => S.tx.filter((t) => Array.isArray(t.tags) && t.tags.includes(id)).length;
+const plural = (n, f) => { const a = n % 100, b = n % 10; return a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; };
+
+function openTagsPage({ onBack } = {}) {
+  if (pageEl) return;
+  const pg = document.createElement('div');
+  pg.className = 'page'; pg.setAttribute('role', 'dialog'); pg.setAttribute('aria-modal', 'true');
+  pg.innerHTML = `<div class="page-bar"><button class="icon-btn" id="tp-back" aria-label="Назад">${icon('left')}</button><h1 id="tp-title"></h1></div><div class="page-body" id="tp-body"></div>`;
+  document.body.appendChild(pg); pageEl = pg;
+  requestAnimationFrame(() => pg.classList.add('on'));
+  const body = $('#tp-body', pg);
+  let editing = null, adding = false, addDraft = '';
+  const close = () => {
+    if (pageEl !== pg) return;
+    pageEl = null; pg.classList.remove('on');
+    setTimeout(() => pg.remove(), reduceMotion() ? 0 : 340);
+    if (onBack) onBack();
+  };
+  pg._close = close;
+  $('#tp-back', pg).onclick = close;
+
+  const countText = (id) => { const n = tagCount(id); return n ? `${n} ${plural(n, ['трата', 'траты', 'трат'])}` : 'Не используется'; };
+  const rowHtml = (g) => editing === g.id
+    ? `<div class="trow2 editing" data-id="${g.id}"><div class="tedit"><input class="tinput" id="tp-edit" maxlength="14" autocomplete="off" enterkeyhint="done" value="${esc(g.name)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-edit-err"></span><span class="tcount" id="tp-edit-count"></span></div></div><button class="btn primary sm" id="tp-done">Готово</button></div>`
+    : `<div class="trow2" data-id="${g.id}"><button class="grip" aria-label="Перетащить «${esc(g.name)}». Стрелки вверх и вниз меняют порядок">${icon('grip')}</button><button class="tinfo" data-ren aria-label="Переименовать «${esc(g.name)}»"><span class="tname">${esc(g.name)}</span><span class="tcnt">${countText(g.id)}</span></button><button class="tact" data-ren aria-label="Переименовать">${icon('pencil')}</button><button class="tact del" data-del aria-label="Удалить «${esc(g.name)}»">${icon('trash')}</button></div>`;
+
+  function render(focusGripOf) {
+    const n = S.tags.length, atLimit = n >= 15;
+    $('#tp-title', pg).textContent = `Теги · ${n}/15`;
+    body.innerHTML = `<p class="thint">Зажмите ≡ для изменения порядка тегов, в котором они будут отображаться при внесении расходов</p>`
+      + (n ? `<div class="tcard" id="tp-list">${S.tags.map(rowHtml).join('')}</div>` : `<div class="tcard empty-card">Тегов пока нет</div>`)
+      + (adding
+        ? `<div class="tcard create"><input class="tinput" id="tp-new" maxlength="14" autocomplete="off" enterkeyhint="done" placeholder="Название тега" value="${esc(addDraft)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-new-err"></span><span class="tcount" id="tp-new-count"></span></div><div class="row"><button class="btn soft sm" id="tp-cancel">Отмена</button><button class="btn primary sm" id="tp-add-ok" disabled>Добавить</button></div></div>`
+        : `<button class="tadd-btn" id="tp-add" ${atLimit ? 'disabled' : ''}>${icon('plus')} Добавить</button>${atLimit ? '<p class="thint">Можно создать до 15 тегов. Удалите ненужный, чтобы добавить новый</p>' : ''}`);
+    // rename
+    body.querySelectorAll('[data-ren]').forEach((b) => b.onclick = () => { if (editing || adding) return; editing = b.closest('.trow2').dataset.id; render(); const i = $('#tp-edit', pg); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
+    const ed = $('#tp-edit', pg);
+    if (ed) {
+      const g = tagById(editing);
+      const v = () => { const nm = normTag(ed.value); const dup = nm ? S.tags.find((o) => o.id !== g.id && tagKey(o.name) === tagKey(nm)) : null;
+        const c = $('#tp-edit-count', pg); c.textContent = `${ed.value.length}/14`; c.classList.toggle('max', ed.value.length >= 14);
+        ed.classList.toggle('err', !!dup); $('#tp-edit-err', pg).textContent = dup ? 'Такой тег уже есть' : '';
+        $('#tp-done', pg).disabled = !!dup; return { nm, dup }; };
+      const done = () => { const { nm, dup } = v(); if (dup) return; if (nm && nm !== g.name) { g.name = nm; save(); } editing = null; render(); };
+      ed.addEventListener('input', v); ed.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(); } });
+      $('#tp-done', pg).onclick = done; v();
+    }
+    // delete
+    body.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { if (editing) return; confirmDelete(tagById(b.closest('.trow2').dataset.id)); });
+    // add
+    const ab = $('#tp-add', pg);
+    if (ab) ab.onclick = () => { if (editing) return; adding = true; render(); $('#tp-new', pg).focus(); };
+    const ni = $('#tp-new', pg);
+    if (ni) {
+      const v = () => { const nm = normTag(ni.value); const dup = nm ? S.tags.find((o) => tagKey(o.name) === tagKey(nm)) : null;
+        const c = $('#tp-new-count', pg); c.textContent = `${ni.value.length}/14`; c.classList.toggle('max', ni.value.length >= 14);
+        ni.classList.toggle('err', !!dup); $('#tp-new-err', pg).textContent = dup ? 'Такой тег уже есть' : '';
+        const ok = !!nm && !dup && S.tags.length < 15; $('#tp-add-ok', pg).disabled = !ok; return { nm, ok }; };
+      const add = () => { const { nm, ok } = v(); if (!ok) return; S.tags.push({ id: uid(), name: nm }); save(); adding = false; addDraft = ''; render(); };
+      ni.addEventListener('input', () => { addDraft = ni.value; v(); });
+      ni.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+      $('#tp-add-ok', pg).onclick = add;
+      $('#tp-cancel', pg).onclick = () => { adding = false; addDraft = ''; render(); };
+      v();
+    }
+    // keyboard reordering
+    body.querySelectorAll('.grip').forEach((gb) => gb.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      const id = gb.closest('.trow2').dataset.id, i = S.tags.findIndex((g) => g.id === id), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+      if (j < 0 || j >= S.tags.length) return;
+      const [g] = S.tags.splice(i, 1); S.tags.splice(j, 0, g); save(); render(id);
+    }));
+    if (focusGripOf) { const r = body.querySelector(`.trow2[data-id="${focusGripOf}"] .grip`); if (r) r.focus(); }
+  }
+
+  // drag to reorder, with auto-scroll near the edges of the visible list
+  body.addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.grip'); if (!grip || editing || adding) return;
+    e.preventDefault();
+    const list = $('#tp-list', pg), rowEl = grip.closest('.trow2'), rows = [...list.children];
+    const from = rows.indexOf(rowEl), h = rowEl.offsetHeight;
+    const grabOff = e.clientY - rowEl.getBoundingClientRect().top;
+    let y = e.clientY, to = from, raf = 0;
+    rowEl.classList.add('dragging'); rows.forEach((r) => { if (r !== rowEl) r.classList.add('shift'); });
+    try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    const update = () => {
+      const lt = list.getBoundingClientRect().top;
+      const top = Math.max(0, Math.min((rows.length - 1) * h, y - lt - grabOff));
+      rowEl.style.transform = `translateY(${top - from * h}px) scale(1.03)`;
+      to = Math.round(top / h);
+      rows.forEach((r, i) => {
+        if (r === rowEl) return;
+        let d = 0;
+        if (from < to && i > from && i <= to) d = -h;
+        if (from > to && i >= to && i < from) d = h;
+        r.style.transform = d ? `translateY(${d}px)` : '';
+      });
+    };
+    const tick = () => {
+      const br = body.getBoundingClientRect(), zone = 60, max = h / 100 * 16;
+      let v = 0;
+      if (y < br.top + zone) v = -max * Math.min(1, (br.top + zone - y) / zone);
+      else if (y > br.bottom - zone) v = max * Math.min(1, (y - (br.bottom - zone)) / zone);
+      if (v) { const st = body.scrollTop; body.scrollTop += v; if (body.scrollTop !== st) update(); }
+      raf = requestAnimationFrame(tick);
+    };
+    const move = (ev) => { y = ev.clientY; update(); };
+    const up = () => {
+      cancelAnimationFrame(raf);
+      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up);
+      if (to !== from) { const [g] = S.tags.splice(from, 1); S.tags.splice(to, 0, g); save(); }
+      render();
+    };
+    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    update(); raf = requestAnimationFrame(tick);
+  });
+
+  function confirmDelete(g) {
+    const n = tagCount(g.id);
+    const ov = document.createElement('div'); ov.className = 'confirm'; ov.setAttribute('role', 'alertdialog');
+    ov.innerHTML = `<div class="cbg"></div><div class="csheet"><h3>Удалить тег «${esc(g.name)}»?</h3><p>${n ? `Тег снимется с ${n} ${plural(n, ['траты', 'трат', 'трат'])}. Сами траты останутся.` : 'Тег не используется ни в одной трате.'}</p><button class="btn cdel">Удалить</button><button class="btn soft ccancel">Отмена</button></div>`;
+    document.body.appendChild(ov);
+    const shut = () => ov.remove();
+    $('.cbg', ov).onclick = shut; $('.ccancel', ov).onclick = shut;
+    $('.cdel', ov).onclick = () => {
+      S.tags = S.tags.filter((x) => x.id !== g.id);
+      S.tx.forEach((t) => { if (Array.isArray(t.tags)) t.tags = t.tags.filter((x) => x !== g.id); });
+      save(); shut(); render(); toast('Тег удалён');
+    };
+  }
+  render();
+}
+
 /* --- money inputs: 150000 → 150 000 while typing --- */
 function bindGrouped(inp) {
   const fmt = () => {
@@ -1016,6 +1371,8 @@ function openSettings() {
       <input class="input num" id="st-budget" inputmode="decimal" autocomplete="off" placeholder="Не задан" value="${budget ?? ''}"></label>
     <button class="btn soft" id="st-budget-save">Сохранить бюджет</button>
     <hr>
+    <button class="setrow" id="st-tags"><span class="grow">Теги</span><span class="sub" id="st-tags-n">${S.tags.length}/15</span>${icon('right')}</button>
+    <hr>
     <label class="switch"><input type="checkbox" id="st-pace" ${S.settings.pace ? 'checked' : ''}>
       <span><b>Подсвечивать темп трат</b><br><span class="sub">Сравниваем текущие расходы с остатком месяца. Первые дни месяца считаются как 12% лимита, чтобы одна покупка не окрашивала всё в красный. Если выключено, красным выделяется только перерасход.</span>
       <span class="legend"><span><i class="dot" style="background:${STATE_COLOR.idle}"></i>нет трат</span><span><i class="dot" style="background:${STATE_COLOR.ok}"></i>в темпе</span><span><i class="dot" style="background:${STATE_COLOR.warn}"></i>чуть быстрее</span><span><i class="dot" style="background:${STATE_COLOR.over}"></i>заметно быстрее или перерасход</span></span></span>
@@ -1028,6 +1385,7 @@ function openSettings() {
     </div>
     <div id="st-out"></div>`);
   bindGrouped($('#st-budget', s));
+  $('#st-tags', s).onclick = () => openTagsPage({ onBack: () => { const n = $('#st-tags-n', s); if (n) n.textContent = `${S.tags.length}/15`; } });
   $('#st-budget-save', s).onclick = () => {
     const raw = $('#st-budget', s).value.trim();
     const v = raw ? parseAmount(raw) : null;
@@ -1065,7 +1423,7 @@ $('#import-file').addEventListener('change', (e) => {
     try {
       const d = JSON.parse(r.result);
       if (!d || !Array.isArray(d.categories) || !Array.isArray(d.tx)) throw new Error();
-      d.settings = d.settings || { pace: false }; d.budget = d.budget || {};
+      d.settings = d.settings || { pace: false }; d.budget = d.budget || {}; if (!Array.isArray(d.tags)) d.tags = [];
       S = d; save(); render(); closeSheet(); toast(`Загружено: ${d.categories.length} категорий, ${d.tx.length} трат`);
     } catch (_) { toast('Файл не похож на копию данных этого приложения'); }
   };
@@ -1112,7 +1470,20 @@ $('#settings-btn').onclick = openSettings;
 $('#fab').onclick = () => openTx({});
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetEl) render(); });
 
+// When the iOS keyboard opens, keep open sheets and pages above it.
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const lift = () => {
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    if (sheetEl) sheetEl.style.bottom = kb ? kb + 'px' : '';
+    if (pageEl) pageEl.style.bottom = kb ? kb + 'px' : '';
+    if (sheetEl && sheetEl._placeMenu) sheetEl._placeMenu();
+  };
+  vv.addEventListener('resize', lift); vv.addEventListener('scroll', lift);
+}
+
 S = load();
+if (!Array.isArray(S.tags)) S.tags = [];
 render();
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (_) {}
 if ('serviceWorker' in navigator && document.documentElement.classList.contains('pwa')) {
