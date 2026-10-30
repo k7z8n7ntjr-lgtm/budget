@@ -158,7 +158,7 @@ input[type=date].input { min-height: 44px; }
 .pick button[aria-pressed=true] .disc-in { background: var(--accent); color: var(--accent-ink); }
 .pick button[aria-pressed=true] small { color: var(--fg); font-weight: 600; }
 /* Category chips in the expense sheet: flat, neutral, in 2–3 rows that scroll sideways together, edge to edge */
-.chips { flex: none; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x;
+.chips { position: relative; flex: none; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x;
   margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
   padding: 2px max(16px, env(safe-area-inset-right, 0px)) 2px max(16px, env(safe-area-inset-left, 0px)); }
 .chips::-webkit-scrollbar { display: none; }
@@ -203,6 +203,11 @@ input[type=date].input { min-height: 44px; }
 .keypad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .keypad button { height: 48px; border-radius: 10px; background: var(--surface); font-family: var(--font-num); font-size: 24px; font-weight: 500; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0,0,0,.08); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .keypad button.f { background: var(--key); }
+.keypad button.ok { background: var(--accent); color: var(--accent-ink); }
+.keypad button.ok svg { width: 26px; height: 26px; stroke-width: 2.6; }
+.keypad button.ok:disabled { background: var(--key); color: #B3B8B4; box-shadow: none; cursor: default; }
+.sheet-head .del { color: var(--danger); }
+.sheet-head .del.armed { background: var(--danger); color: #fff; }
 .keypad button:active { background: var(--line); }
 .keypad svg { width: 24px; height: 24px; }
 .row-actions { flex-direction: row; }
@@ -326,6 +331,7 @@ const ICONS = {
   'backspace': '<path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/>',
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  'check': '<path d="M20 6 9 17l-5-5"/>',
   'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
   'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
 };
@@ -655,22 +661,18 @@ function openTx({ id = null, catId = null, back = null }) {
   const days = wheelDates(date);
   const ROW = 22;
 
-  const keypad = ['1', '2', '3', ',', '4', '5', '6', '0', '7', '8', '9', 'del']
-    .map((k) => k === 'del'
-      ? `<button class="f" data-k="del" aria-label="Стереть">${icon('backspace')}</button>`
-      : `<button class="${k === ',' ? 'f' : ''}" data-k="${k}">${k}</button>`).join('');
+  const keypad = ['1', '2', '3', 'ok', '4', '5', '6', '0', '7', '8', '9', 'del']
+    .map((k) => k === 'del' ? `<button class="f" data-k="del" aria-label="Стереть">${icon('backspace')}</button>`
+      : k === 'ok' ? `<button class="ok" data-k="ok" id="tx-save" disabled aria-label="${isEdit ? 'Сохранить' : 'Записать трату'}">${icon('check')}</button>`
+      : `<button data-k="${k}">${k}</button>`).join('');
   const s = openSheet(`
-    <div class="sheet-head"><h2 id="tx-title"></h2>${closeBtn}</div>
+    <div class="sheet-head"><h2 id="tx-title"></h2>${isEdit ? `<button class="icon-btn del" id="tx-del" aria-label="Удалить трату">${icon('trash')}</button>` : ''}</div>
     <div class="amt-row">
       <div class="amt" id="tx-amt-box" aria-label="Сумма" role="textbox" aria-readonly="true"><b class="num" id="tx-amt"></b><span class="cur">₽</span></div>
       <div class="datechip" aria-label="Дата. Прокрутите вниз, чтобы выбрать более раннюю"><div class="drum" id="tx-drum">${days.map((d) => `<button data-d="${d}" tabindex="-1">${dateLabel(d)}</button>`).join('')}</div></div>
     </div>
     <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
     <div class="chips" id="tx-cats"><div class="chips-in">${chipRows(cats).map((row) => `<div class="chips-row">${row.map((c) => `<button class="chip" data-c="${c.id}" aria-pressed="${c.id === cat}">${esc(c.name)}</button>`).join('')}</div>`).join('')}</div></div>
-    <div class="actions ${isEdit ? 'row-actions' : ''}">
-      ${isEdit ? `<button class="btn icon-only danger" id="tx-del" aria-label="Удалить трату">${icon('trash')}</button>` : ''}
-      <button class="btn primary" id="tx-save" disabled>${isEdit ? 'Сохранить' : 'Записать трату'}</button>
-    </div>
     <div class="pad-area">
       <div class="keypad" id="tx-keys">${keypad}</div>
     </div>`, 'txs');
@@ -682,7 +684,7 @@ function openTx({ id = null, catId = null, back = null }) {
     amtEl.classList.toggle('blank', !amt);
     amtEl.innerHTML = (amt ? fmtAmountStr(amt) : '0') + '<i class="caret"></i>';
     const c = cat && catById(cat);
-    $('#tx-title', s).innerHTML = (isEdit ? 'Изменить расход' : 'Введите расход') +
+    $('#tx-title', s).innerHTML = (isEdit ? 'Изменить расход' : 'Потрачено') +
       (c ? `<span class="arrow">${icon('arrow-right')}</span><span class="tname">${esc(c.name)}</span>` : '');
     saveBtn.disabled = !(amountValue() > 0 && cat);
   };
@@ -705,6 +707,7 @@ function openTx({ id = null, catId = null, back = null }) {
     const b = e.target.closest('[data-k]'); if (!b) return;
     e.preventDefault();
     if (document.activeElement === commentEl) commentEl.blur();
+    if (b.dataset.k === 'ok') { if (!b.disabled) commit(); return; }
     press(b.dataset.k);
     if (b.dataset.k === 'del') holdTimer = setTimeout(() => { amt = ''; paint(); }, 550);
   });
@@ -761,13 +764,20 @@ function openTx({ id = null, catId = null, back = null }) {
     cat = b.dataset.c;
     s.querySelectorAll('#tx-cats [data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b));
     paint();
+    revealChip(b, true);
   };
-  saveBtn.onclick = commit;
+  // scroll the chip row just enough that the chosen chip is fully visible, with a margin
+  function revealChip(el, smooth) {
+    const box = $('#tx-cats', s), m = 16;
+    const l = el.offsetLeft, r = l + el.offsetWidth;
+    let x = box.scrollLeft;
+    if (l - m < x) x = l - m;
+    else if (r + m > x + box.clientWidth) x = r + m - box.clientWidth;
+    x = Math.max(0, x);
+    if (x !== box.scrollLeft) box.scrollTo({ left: x, behavior: smooth ? 'smooth' : 'auto' });
+  }
   const pre = cat && s.querySelector(`#tx-cats [data-c="${cat}"]`);
-  if (pre) requestAnimationFrame(() => {
-    const box = $('#tx-cats', s);
-    box.scrollLeft = Math.max(0, pre.offsetLeft - (box.clientWidth - pre.offsetWidth) / 2);
-  });
+  if (pre) requestAnimationFrame(() => revealChip(pre, false));
   const del = $('#tx-del', s);
   if (del) del.onclick = () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); toast('Нажмите ещё раз, чтобы удалить'); return; }
