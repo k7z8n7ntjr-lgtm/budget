@@ -97,7 +97,8 @@ body.toasting .month { opacity: 0; }
 
 /* category tiles: 2 columns; only the grid scrolls when there are many */
 .grid-wrap { flex: 1 1 auto !important; min-height: 0; }
-.grid { height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; padding-bottom: 10px; }
+.grid-wrap { margin: -10px -10px 0; }
+.grid { height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; padding: 10px 10px 12px; }
 .cat { background: var(--surface); border-radius: 16px; padding: 9px 12px 10px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; min-height: 70px; text-align: left; transition: transform .12s, box-shadow .12s; }
 .cat:active { transform: scale(.98); }
 .cat-name { display: flex; align-items: center; gap: 6px; font-size: 13.5px; min-width: 0; }
@@ -537,7 +538,6 @@ function setupDrag(src) {
     src.classList.add('lifted'); document.body.classList.add('dragging');
     ghost = document.createElement('div'); ghost.className = 'ghost'; ghost.textContent = '₽';
     document.body.appendChild(ghost); move(x, y);
-    if (navigator.vibrate) navigator.vibrate(8);
   };
   const move = (x, y) => {
     ghost.style.transform = `translate(${x}px, ${y}px)`;
@@ -772,7 +772,6 @@ function openTx({ id = null, catId = null, back = null }) {
     else S.tx.push({ id: uid(), cat, amount, date, comment });
     save(); // data is written at once; the screen catches up after the sheet has gone
     saveBtn.classList.remove('pop'); void saveBtn.offsetWidth; saveBtn.classList.add('pop');
-    haptic();
     setTimeout(() => closeSheet(), reduceMotion() ? 0 : 170);
     afterSave(before, cat, amount, date);
     return true;
@@ -809,23 +808,6 @@ const reduceMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-
 let anims = [];
 function stopAnims() { anims.forEach((f) => f()); anims = []; }
 function later(fn, ms) { const id = setTimeout(fn, ms); anims.push(() => clearTimeout(id)); }
-// Success tick. iOS web apps have no vibration API; on iOS 18+ toggling a hidden system switch gives a light haptic.
-const haptic = (() => {
-  let lbl = null;
-  return () => {
-    try {
-      if (navigator.vibrate && navigator.vibrate(15)) return;
-      if (!lbl) {
-        lbl = document.createElement('label');
-        lbl.setAttribute('aria-hidden', 'true');
-        lbl.style.cssText = 'position:fixed;left:-200px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
-        const inp = document.createElement('input'); inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1;
-        lbl.appendChild(inp); document.body.appendChild(lbl);
-      }
-      lbl.click();
-    } catch (_) {}
-  };
-})();
 function snapshot() {
   const spentBy = {}; let total = 0;
   for (const t of txIn(view)) { spentBy[t.cat] = (spentBy[t.cat] || 0) + t.amount; total += t.amount; }
