@@ -166,13 +166,12 @@ input[type=date].input { min-height: 44px; }
 /* Expense sheet: own keypad instead of the iOS keyboard */
 .sheet.txs { padding-bottom: 0; gap: 10px; }
 .sheet.txs .sheet-head { margin-top: -2px; }
-/* While typing, the sheet stays pinned to the screen bottom and its white padding grows to the keyboard height (--kb):
-   the content rides up with the keyboard and the main screen never shows between them. */
-.sheet.txs { transition: transform .34s cubic-bezier(.32,.72,0,1), padding-bottom .32s cubic-bezier(.32,.72,0,1); }
+/* While typing, the sheet stays pinned to the screen bottom and the tray is swapped for white padding of the keyboard
+   height (--kb), in the same frame and without animation: the sheet keeps about the same height, so it neither dips
+   nor jumps, and the keyboard slides over white. */
 .sheet.txs.typing { padding-bottom: calc(12px + var(--kb, 0px)); max-height: none; }
 /* until the comment is tapped, a long press must not select text or focus the field natively (iOS would scroll the page) */
 .sheet.txs:not(.typing) #tx-comment[readonly] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-@media (prefers-reduced-motion: reduce) { .sheet.txs { transition: opacity .2s; } }
 .sheet.txs.typing .tray { display: none; }
 /* Bottom tray "where": categories + keypad on the grey keyboard surface, edge to edge */
 .tray { flex: none; display: flex; flex-direction: column; gap: 12px; background: var(--bg); padding-top: 14px; margin-top: 6px;
@@ -1089,10 +1088,12 @@ function openTx({ id = null, catId = null, back = null }) {
   const startTyping = () => {
     if (s.classList.contains('typing')) return;
     closePop(true); if (menu) closeMenu();
-    s.classList.add('typing'); s.scrollTop = 0;
-    if (coarse) seatOnKeyboard(s, kbGuess());
+    flipSheet(s, () => {
+      s.classList.add('typing'); s.scrollTop = 0;
+      if (coarse) seatOnKeyboard(s, kbGuess());
+    });
     // no keyboard came up (hardware keyboard): put the content back down
-    setTimeout(() => { if (s.classList.contains('typing') && !kbNow()) seatOnKeyboard(s, 0); }, 900);
+    setTimeout(() => { if (s.classList.contains('typing') && !kbNow()) flipSheet(s, () => seatOnKeyboard(s, 0)); }, 900);
   };
   let tap0 = null;
   commentEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; tap0 = { x: t.clientX, y: t.clientY }; }, { passive: true });
@@ -1108,8 +1109,7 @@ function openTx({ id = null, catId = null, back = null }) {
   if (coarse) commentEl.readOnly = true;
   commentEl.addEventListener('focus', () => { if (commentEl.readOnly) { commentEl.blur(); return; } startTyping(); });
   commentEl.addEventListener('blur', () => {
-    s.classList.remove('typing');
-    seatOnKeyboard(s, 0);
+    flipSheet(s, () => { s.classList.remove('typing'); seatOnKeyboard(s, 0); });
     if (coarse) commentEl.readOnly = true;
     if (window.scrollY) window.scrollTo(0, 0);
   });
@@ -1613,6 +1613,16 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !s
 let kbH = 0;
 try { kbH = +localStorage.getItem('budget-kb-h') || 0; } catch (_) {}
 const kbGuess = () => kbH || Math.round(innerHeight * .45);
+// Make a layout change to a sheet and let its top glide from the old place to the new one (FLIP), instead of jumping.
+function flipSheet(sh, change) {
+  const t0 = sh.getBoundingClientRect().top;
+  change();
+  const d = Math.round(t0 - sh.getBoundingClientRect().top);
+  if (!d || reduceMotion() || !sh.classList.contains('on')) return;
+  sh.style.transition = 'none'; sh.style.transform = `translateY(${d}px)`;
+  void sh.offsetHeight;
+  sh.style.transition = ''; sh.style.transform = '';
+}
 // Seat the expense form on the keyboard: the sheet keeps bottom 0, its white padding takes the keyboard height.
 function seatOnKeyboard(sh, kb) {
   if (kb) sh.style.setProperty('--kb', kb + 'px'); else sh.style.removeProperty('--kb');
@@ -1628,7 +1638,7 @@ if (window.visualViewport) {
       const txs = sheetEl.classList.contains('txs'), typing = sheetEl.classList.contains('typing');
       const own = !txs || typing || (document.activeElement && document.activeElement.id === 'tm-input');
       if (typing && kb > 120 && kb !== kbH) { kbH = kb; try { localStorage.setItem('budget-kb-h', kb); } catch (_) {} }
-      if (typing) { if (kb) seatOnKeyboard(sheetEl, kb); } // while the keyboard is still coming up, keep the early lift
+      if (typing) { if (kb) { const sh = sheetEl; flipSheet(sh, () => seatOnKeyboard(sh, kb)); } } // while the keyboard is still coming up, keep the early lift
       else {
         const k = own ? kb : 0;
         sheetEl.style.bottom = k ? k + 'px' : ''; sheetEl.style.maxHeight = k ? (vv.height - 8) + 'px' : '';
