@@ -107,7 +107,7 @@ body.dragging .cat:not(.add) { box-shadow: 0 0 0 1.5px var(--line); }
 .ghost { position: fixed; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 24px; font-weight: 700; pointer-events: none; z-index: 50; box-shadow: 0 8px 24px rgba(20,40,30,.3); }
 
 /* Bottom bar: full width, a soft hill that peaks in the middle; the whole bar adds an expense. */
-.addbar { flex: none; position: relative; display: block; width: 100%; height: calc(56px + env(safe-area-inset-bottom, 0px)); color: var(--accent-ink); z-index: 5; }
+.addbar { flex: none; position: relative; display: block; width: 100%; height: calc(56px + max(0px, env(safe-area-inset-bottom, 0px) - var(--bar-drop))); color: var(--accent-ink); z-index: 5; --bar-drop: 8px; }
 .addbar .shape { position: absolute; left: 0; top: 0; width: 100%; height: 56px; display: block; filter: drop-shadow(0 -3px 10px rgba(20,60,45,.16)); }
 .addbar .shape path { fill: var(--accent); }
 .addbar::after { content: ""; position: absolute; left: 0; right: 0; top: 55px; bottom: 0; background: var(--accent); }
@@ -121,11 +121,11 @@ body.dragging .cat:not(.add) { box-shadow: 0 0 0 1.5px var(--line); }
 .backdrop { position: fixed; inset: 0; background: rgba(20,24,22,.32); z-index: 20; opacity: 0; transition: opacity .29s ease-out; }
 .backdrop.on { opacity: 1; }
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-width: 560px; margin: 0 auto; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); border-radius: 22px 22px 0 0; padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); transform: translateY(100%); transition: transform .34s cubic-bezier(.32,.72,0,1); display: flex; flex-direction: column; gap: 14px; }
-.sheet.on { transform: none; }
+.sheet.on { transform: none; transition-duration: .38s; transition-timing-function: cubic-bezier(.22,.8,.24,1); } /* opening: a softer start, the same curve family as closing */
 @media (prefers-reduced-motion: reduce) {
   .cat { transition: none; }
   .sheet { transform: none; opacity: 0; transition: opacity .2s; }
-  .sheet.on { opacity: 1; }
+  .sheet.on { opacity: 1; transition-duration: .2s; }
   .backdrop { transition: opacity .2s; }
 }
 .grab-zone { flex: none; margin: -8px 0 -6px; padding: 8px 0 10px; touch-action: none; cursor: grab; }
@@ -255,7 +255,6 @@ input[type=date].input { min-height: 44px; }
 .day { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 4px; }
 .tx { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
 .tx .c { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tx .c.none { color: var(--muted); }
 .tx .a { font-weight: 600; white-space: nowrap; }
 .list { display: flex; flex-direction: column; }
 .empty { color: var(--muted); text-align: center; padding: 20px 0; }
@@ -308,27 +307,23 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 .tmi svg { width: 18px; height: 18px; flex: none; }
 .tmi.tnew { color: var(--accent); }
 .tmi.tnew:disabled { color: #A8AEAA; cursor: default; }
-.tmi.tcfg { color: var(--muted); }
-.tlimit { font-size: 12px; color: var(--muted); padding: 0 10px 6px; }
+.tmi.tcfg, .tmi.tmulti { color: var(--muted); }
 .tempty { display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 6px; }
 .tempty b { font-size: 15px; }
 .tempty span { font-size: 13px; color: var(--muted); }
-.tcreate { display: flex; flex-direction: column; gap: 6px; padding: 6px; }
 .tinput { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg); outline: none; -webkit-appearance: none; appearance: none; }
 .tinput.err { border-color: var(--danger); }
 .tmeta { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; min-height: 15px; }
 .terr { color: var(--danger); }
 .tcount { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
 .tcount.max { color: var(--danger); }
-.tpick { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border-radius: 10px; background: #E7EFEA; color: #2F5446; font-size: 14px; font-weight: 600; text-align: left; }
-.tpick svg { width: 16px; height: 16px; flex: none; }
 .tpick svg path { fill: currentColor; }
 .tpick span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn.sm { min-height: 40px; font-size: 15px; border-radius: 10px; }
 
 /* ---------- tags page (full screen, slides in from the right) ---------- */
 .page { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); transform: translateX(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
-.page.on { transform: none; }
+.page.on { transform: none; transition-duration: .38s; transition-timing-function: cubic-bezier(.22,.8,.24,1); }
 @media (prefers-reduced-motion: reduce) { .page { transition: none; } }
 .page-bar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; min-height: 44px; padding: 8px max(8px, env(safe-area-inset-right, 0px)) 4px max(8px, env(safe-area-inset-left, 0px)); flex: none; }
 .page-bar h1 { grid-column: 2; justify-self: center; margin: 0; font-size: 20px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -440,6 +435,7 @@ const ICONS = {
   'left': '<path d="m15 18-6-6 6-6"/>',
   'right': '<path d="m9 18 6-6-6-6"/>',
   'sliders': '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+  'list-checks': '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
   'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   'backspace': '<path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/>',
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
@@ -716,7 +712,9 @@ function openSheet(html, cls = '') {
   backdropEl.onclick = () => closeSheet();
   document.body.append(backdropEl, sheetEl);
   enableSwipeClose(sheetEl);
-  requestAnimationFrame(() => { backdropEl.classList.add('on'); sheetEl.classList.add('on'); });
+  // start from a committed off-screen frame, so the first frames of the slide are never skipped
+  void sheetEl.offsetHeight;
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (!backdropEl || !sheetEl) return; backdropEl.classList.add('on'); sheetEl.classList.add('on'); }));
   sheetEl.querySelectorAll('[data-close]').forEach((b) => b.onclick = () => closeSheet());
   return sheetEl;
 }
@@ -989,7 +987,7 @@ function openTx({ id = null, catId = null, back = null }) {
 
   // ---------- tags: button + menu ----------
   let tags = (t && Array.isArray(t.tags) ? t.tags : []).filter((id) => tagById(id));
-  let creating = false, draft = '', menu = null;
+  let menu = null;
   const tagBtn = $('#tx-tagbtn', s);
   const orderedSel = () => S.tags.filter((g) => tags.includes(g.id));
   const paintTagBtn = () => {
@@ -1010,25 +1008,19 @@ function openTx({ id = null, catId = null, back = null }) {
     if (below >= 220 || below >= above) { menu.style.top = (r.bottom + 6) + 'px'; menu.style.bottom = 'auto'; menu.style.maxHeight = below + 'px'; }
     else { menu.style.top = 'auto'; menu.style.bottom = (innerHeight - r.top + 6) + 'px'; menu.style.maxHeight = above + 'px'; }
   };
-  const createHtml = () => `<div class="tcreate">
-      <input class="tinput" id="tm-input" maxlength="14" placeholder="Название" autocomplete="off" enterkeyhint="done" value="${esc(draft)}" aria-label="Название тега">
-      <div class="tmeta"><span class="terr" id="tm-err"></span><span class="tcount" id="tm-count"></span></div>
-      <button class="tpick" id="tm-pick" hidden></button>
-      <button class="btn primary sm" id="tm-add" disabled>Добавить</button>
-    </div>`;
+  let multi = false; // "Выбрать несколько": taps toggle tags and keep the menu open
   const renderFoot = () => {
-    const foot = $('.tfoot', menu), atLimit = S.tags.length >= 15;
-    foot.innerHTML = (creating || !S.tags.length ? createHtml()
-      : `<button class="tmi tnew" id="tm-new" ${atLimit ? 'disabled' : ''}>${icon('plus')}Новый тег</button>${atLimit ? '<div class="tlimit">Максимум 15 тегов</div>' : ''}`)
-      + `<button class="tmi tcfg" id="tm-cfg">${icon('sliders')}Настроить</button>`;
-    const inp = $('#tm-input', menu);
-    if (inp) bindCreate(inp);
-    const nw = $('#tm-new', menu);
-    if (nw) nw.onclick = () => { creating = true; renderFoot(); placeMenu(); $('#tm-input', menu).focus(); };
-    $('#tm-cfg', menu).onclick = () => {
-      closeMenu();
-      openTagsPage({ onBack: () => { tags = tags.filter((id) => tagById(id)); paintTagBtn(); if (sheetEl === s) openMenu(); } });
-    };
+    const foot = $('.tfoot', menu);
+    foot.innerHTML = !S.tags.length
+      ? `<button class="tmi tnew" id="tm-add">${icon('plus')}Добавить тег</button>`
+      : (multi ? `<button class="tmi tnew" id="tm-done">${icon('check')}Готово</button>`
+        : S.tags.length >= 2 ? `<button class="tmi tmulti" id="tm-multi">${icon('list-checks')}Выбрать несколько</button>` : '')
+        + `<button class="tmi tcfg" id="tm-cfg">${icon('sliders')}Настроить</button>`;
+    const back = () => { tags = tags.filter((id) => tagById(id)); paintTagBtn(); if (sheetEl === s) openMenu(); };
+    const ad = $('#tm-add', menu); if (ad) ad.onclick = () => { closeMenu(); openTagsPage({ add: true, onBack: back }); };
+    const cf = $('#tm-cfg', menu); if (cf) cf.onclick = () => { closeMenu(); openTagsPage({ onBack: back }); };
+    const mu = $('#tm-multi', menu); if (mu) mu.onclick = () => { multi = true; renderMenu(); placeMenu(); };
+    const dn = $('#tm-done', menu); if (dn) dn.onclick = () => closeMenu();
   };
   const renderMenu = () => {
     const keep = $('.tlist', menu) ? $('.tlist', menu).scrollTop : 0;
@@ -1039,62 +1031,28 @@ function openTx({ id = null, catId = null, back = null }) {
     renderFoot();
     if ($('.tlist', menu)) $('.tlist', menu).scrollTop = keep;
   };
-  function bindCreate(inp) {
-    const validate = () => {
-      const v = inp.value, nm = normTag(v);
-      const cnt = $('#tm-count', menu); cnt.textContent = `${v.length}/14`; cnt.classList.toggle('max', v.length >= 14);
-      const dup = nm ? S.tags.find((g) => tagKey(g.name) === tagKey(nm)) : null;
-      inp.classList.toggle('err', !!dup);
-      $('#tm-err', menu).textContent = dup ? 'Такой тег уже есть' : '';
-      const pick = $('#tm-pick', menu);
-      pick.hidden = !(dup && !tags.includes(dup.id));
-      if (!pick.hidden) { pick.innerHTML = `${icon('tag')}<span>Выбрать «${esc(dup.name)}»</span>`; pick.onclick = () => { tags.push(dup.id); creating = false; draft = ''; inp.blur(); paintTagBtn(); renderMenu(); placeMenu(); }; }
-      const add = $('#tm-add', menu);
-      add.disabled = !nm || !!dup || S.tags.length >= 15;
-      return { nm, ok: !add.disabled };
-    };
-    inp.addEventListener('input', () => { draft = inp.value; validate(); });
-    inp.addEventListener('focus', () => setTimeout(placeMenu, 300));
-    const doAdd = () => {
-      const { nm, ok } = validate(); if (!ok) return;
-      const g = { id: uid(), name: nm }; S.tags.push(g); save();
-      tags.push(g.id); creating = false; draft = '';
-      inp.blur(); paintTagBtn(); renderMenu(); placeMenu();
-    };
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doAdd(); } });
-    $('#tm-add', menu).onclick = doAdd;
-    validate();
-  }
   const outside = (e) => { if (menu && !menu.contains(e.target) && !tagBtn.contains(e.target)) closeMenu(); };
   function openMenu() {
     if (menu) return;
     menu = document.createElement('div'); menu.className = 'tmenu';
     document.body.appendChild(menu);
-    // keep the name field focused (and the keyboard up) while tapping inside the menu
-    menu.addEventListener('pointerdown', (e) => { const a = document.activeElement; if (a && a.id === 'tm-input' && e.target.closest('button') && !e.target.closest('#tm-cfg, #tm-pick')) e.preventDefault(); });
     menu.addEventListener('click', (e) => {
       const b = e.target.closest('[data-tag]'); if (!b) return;
       const id = b.dataset.tag, on = !tags.includes(id);
       tags = on ? tags.concat(id) : tags.filter((x) => x !== id);
       b.setAttribute('aria-selected', on); b.innerHTML = `<span>${esc(tagById(id).name)}</span>${on ? icon('check') : ''}`;
       paintTagBtn();
-      const inp = $('#tm-input', menu);
-      if (creating && inp && !inp.value.trim()) { creating = false; draft = ''; inp.blur(); renderFoot(); }
-      else if (inp) inp.dispatchEvent(new Event('input'));
+      if (!multi) { setTimeout(closeMenu, reduceMotion() ? 0 : 160); return; } // let the check mark show for a moment
       placeMenu();
     });
     renderMenu(); placeMenu();
     tagBtn.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside, true);
     closeTagMenu = closeMenu;
-    if (!S.tags.length) setTimeout(() => { const i = menu && $('#tm-input', menu); if (i) i.focus(); }, 50);
   }
   function closeMenu() {
     if (!menu) return;
-    const inp = $('#tm-input', menu);
-    if (inp) { draft = inp.value; if (document.activeElement === inp) inp.blur(); }
-    if (!draft.trim()) { creating = false; draft = ''; }
-    menu.remove(); menu = null;
+    menu.remove(); menu = null; multi = false;
     tagBtn.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
     if (closeTagMenu === closeMenu) closeTagMenu = null;
@@ -1312,10 +1270,10 @@ function openCategory(id) {
       const [y, m, d] = t.date.split('-').map(Number);
       list += `<div class="day">${new Date(y, m - 1, d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })}</div>`;
     }
-    list += `<button class="tx" data-t="${t.id}"><span class="c ${t.comment ? '' : 'none'}">${esc(t.comment || 'Без комментария')}</span><span class="a num">${rub(t.amount)}</span></button>`;
+    list += `<button class="tx" data-t="${t.id}"><span class="c">${esc(t.comment || '')}</span><span class="a num">${rub(t.amount)}</span></button>`;
   }
   const summary = limit == null
-    ? `<span>Потрачено <b class="num">${rub(spent)}</b></span><span>без лимита</span>`
+    ? `<span>Потрачено <b class="num">${rub(spent)}</b></span>`
     : `<span>Потрачено <b class="num">${rub(spent)}</b> из <b class="num">${rub(limit)}</b></span>` +
       (spent > limit ? `<span class="over num">перерасход ${rub(spent - limit)}</span>` : `<span class="num">осталось ${rub(limit - spent)}</span>`);
   const s = openSheet(`
@@ -1390,15 +1348,16 @@ const tagKey = (v) => normTag(v).toLowerCase().replace(/ё/g, 'е');
 const tagCount = (id) => S.tx.filter((t) => Array.isArray(t.tags) && t.tags.includes(id)).length;
 const plural = (n, f) => { const a = n % 100, b = n % 10; return a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; };
 
-function openTagsPage({ onBack } = {}) {
+function openTagsPage({ onBack, add = false } = {}) {
   if (pageEl) return;
   const pg = document.createElement('div');
   pg.className = 'page'; pg.setAttribute('role', 'dialog'); pg.setAttribute('aria-modal', 'true');
   pg.innerHTML = `<div class="page-bar"><button class="icon-btn" id="tp-back" aria-label="Назад">${icon('left')}</button><h1 id="tp-title"></h1></div><div class="page-body" id="tp-body"></div>`;
   document.body.appendChild(pg); pageEl = pg;
-  requestAnimationFrame(() => pg.classList.add('on'));
+  void pg.offsetWidth;
+  requestAnimationFrame(() => requestAnimationFrame(() => pg.classList.add('on')));
   const body = $('#tp-body', pg);
-  let editing = null, adding = false, addDraft = '';
+  let editing = null, adding = add && S.tags.length < 15, addDraft = '';
   const close = () => {
     if (pageEl !== pg) return;
     pageEl = null; pg.classList.remove('on');
@@ -1415,9 +1374,10 @@ function openTagsPage({ onBack } = {}) {
 
   function render(focusGripOf) {
     const n = S.tags.length, atLimit = n >= 15;
-    $('#tp-title', pg).textContent = `Теги · ${n}/15`;
+    $('#tp-title', pg).textContent = 'Теги';
     body.innerHTML = `<p class="thint">Зажмите ≡ для изменения порядка тегов, в котором они будут отображаться при внесении расходов</p>`
       + (n ? `<div class="tcard" id="tp-list">${S.tags.map(rowHtml).join('')}</div>` : `<div class="tcard empty-card">Тегов пока нет</div>`)
+      + (n && !atLimit ? `<p class="thint tcount-hint">${n} из 15 тегов</p>` : '')
       + (adding
         ? `<div class="tcard create"><input class="tinput" id="tp-new" maxlength="14" autocomplete="off" enterkeyhint="done" placeholder="Название тега" value="${esc(addDraft)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-new-err"></span><span class="tcount" id="tp-new-count"></span></div><div class="row"><button class="btn soft sm" id="tp-cancel">Отмена</button><button class="btn primary sm" id="tp-add-ok" disabled>Добавить</button></div></div>`
         : `<button class="tadd-btn" id="tp-add" ${atLimit ? 'disabled' : ''}>${icon('plus')} Добавить</button>${atLimit ? '<p class="thint">Можно создать до 15 тегов. Удалите ненужный, чтобы добавить новый</p>' : ''}`);
@@ -1549,7 +1509,7 @@ function openSettings() {
       <input class="input num" id="st-budget" inputmode="decimal" autocomplete="off" placeholder="Не задан" value="${budget ?? ''}"></label>
     <button class="btn soft" id="st-budget-save">Сохранить бюджет</button>
     <hr>
-    <button class="setrow" id="st-tags"><span class="grow">Теги</span><span class="sub" id="st-tags-n">${S.tags.length}/15</span>${icon('right')}</button>
+    <button class="setrow" id="st-tags"><span class="grow">Теги</span>${icon('right')}</button>
     <hr>
     <div class="field"><span>Карточка бюджета</span>
       <div class="seg" role="radiogroup">
@@ -1570,7 +1530,7 @@ function openSettings() {
     </div>
     <div id="st-out"></div>`);
   bindGrouped($('#st-budget', s));
-  $('#st-tags', s).onclick = () => openTagsPage({ onBack: () => { const n = $('#st-tags-n', s); if (n) n.textContent = `${S.tags.length}/15`; } });
+  $('#st-tags', s).onclick = () => openTagsPage();
   $('#st-budget-save', s).onclick = () => {
     const raw = $('#st-budget', s).value.trim();
     const v = raw ? parseAmount(raw) : null;
@@ -1699,10 +1659,10 @@ if (window.visualViewport) {
   const lift = () => {
     const kb = kbNow();
     if (sheetEl) {
-      // the expense form follows the keyboard only while typing a comment or a new tag name;
+      // the expense form follows the keyboard only while typing a comment;
       // after that the sheet goes straight down, behind the keyboard that is still leaving
       const txs = sheetEl.classList.contains('txs'), typing = sheetEl.classList.contains('typing');
-      const own = !txs || typing || (document.activeElement && document.activeElement.id === 'tm-input');
+      const own = !txs || typing;
       if (typing && kb > 120 && kb !== kbH) { kbH = kb; try { localStorage.setItem('budget-kb-h', kb); } catch (_) {} }
       if (typing) { if (kb) { const sh = sheetEl; flipSheet(sh, () => seatOnKeyboard(sh, kb)); } } // while the keyboard is still coming up, keep the early lift
       else {
