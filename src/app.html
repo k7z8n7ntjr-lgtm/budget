@@ -70,7 +70,7 @@ body.toasting .month { opacity: 0; }
 .bcard .big { font-family: var(--font-num); font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bcard .sp { font-size: 13px; margin-top: 4px; opacity: .85; font-variant-numeric: tabular-nums; }
 /* onboarding hint under the card: shown until the first drag onto a category, at most on 3 different days (SPEC 3.3) */
-.onb { margin: 6px 4px 0; font-size: 13px; line-height: 1.3; color: var(--muted); transition: opacity .3s; }
+.onb { margin: 6px 4px 0; text-align: center; font-size: 13px; line-height: 1.3; color: var(--muted); transition: opacity .3s; }
 .onb.gone { opacity: 0; }
 .bcard.lifted { transform: scale(.97); opacity: .6; }
 .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
@@ -294,8 +294,11 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 .tagbtn.on .tb-ico circle { fill: #E7EFEA; stroke: #E7EFEA; }
 .tagbtn.on .tb-arrow { color: #2F5446; opacity: .55; }
 .tagbtn .tb-more { flex: none; font-size: 12px; font-weight: 700; background: #2F5446; color: #fff; border-radius: 8px; padding: 1px 6px; }
-.tmenu { position: fixed; z-index: 30; width: 200px; background: var(--surface); border-radius: 14px; box-shadow: 0 12px 32px rgba(16,30,22,.2), 0 0 0 1px rgba(0,0,0,.05); display: flex; flex-direction: column; overflow: hidden; animation: tmin .16s ease-out; }
-@keyframes tmin { from { opacity: 0; transform: translateY(-4px); } }
+.tmenu { position: fixed; z-index: 30; transform-origin: top right; width: 200px; background: var(--surface); border-radius: 14px; box-shadow: 0 12px 32px rgba(16,30,22,.2), 0 0 0 1px rgba(0,0,0,.05); display: flex; flex-direction: column; overflow: hidden; animation: tmin .24s cubic-bezier(.32,.72,0,1); }
+.tmenu.up { transform-origin: bottom right; }
+.tmenu.out { animation: tmout .16s ease-in forwards; pointer-events: none; }
+@keyframes tmin { from { opacity: 0; transform: scale(.92); } }
+@keyframes tmout { to { opacity: 0; transform: scale(.96); } }
 @media (prefers-reduced-motion: reduce) { .tmenu { animation: none; } }
 .tlist { flex: 0 1 auto; min-height: 0; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
 .trow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px; border-radius: 10px; font-size: 15px; text-align: left; color: var(--fg); }
@@ -307,11 +310,17 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 .tmi svg { width: 18px; height: 18px; flex: none; }
 .tmi.tnew { color: var(--accent); }
 .tmi.tnew:disabled { color: #A8AEAA; cursor: default; }
-.tmi.tcfg, .tmi.tmulti { color: var(--muted); }
+.tmi.tcfg, .tmi.tmulti { color: var(--muted); font-size: 15px; font-weight: 400; }
+.tadd-wrap { display: flex; flex-direction: column; padding: 6px; }
 .tempty { display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 6px; }
 .tempty b { font-size: 15px; }
 .tempty span { font-size: 13px; color: var(--muted); }
-.tinput { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg); outline: none; -webkit-appearance: none; appearance: none; }
+.tinput { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--accent); background: var(--surface); color: var(--fg); outline: none; -webkit-appearance: none; appearance: none; }
+.tinput:focus-visible { outline: none; }
+.tfield { position: relative; }
+.tfield .tinput { padding-right: 48px; }
+.tfield .tcount { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; pointer-events: none; }
+.tmeta:has(.terr:empty) { display: none; }
 .tinput.err { border-color: var(--danger); }
 .tmeta { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; min-height: 15px; }
 .terr { color: var(--danger); }
@@ -329,6 +338,7 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 .page-bar h1 { grid-column: 2; justify-self: center; margin: 0; font-size: 20px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .page-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 12px; }
 .thint { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.4; }
+.thint.tcount-hint { text-align: center; }
 .tcard { background: var(--surface); border-radius: 16px; position: relative; }
 .tcard.empty-card { padding: 18px 16px; color: var(--muted); text-align: center; }
 .trow2 { display: flex; align-items: center; min-height: 56px; padding-right: 4px; background: var(--surface); position: relative; border-top: 1px solid var(--line); }
@@ -345,7 +355,7 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 .tact { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); border-radius: 12px; }
 .tact svg { width: 19px; height: 19px; }
 .tact.del { color: var(--danger); }
-.trow2.editing { align-items: flex-start; gap: 8px; padding: 8px 8px 8px 12px; }
+.trow2.editing { align-items: center; gap: 8px; padding: 8px 8px 8px 12px; }
 .tedit { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .tadd-btn { min-height: 52px; border-radius: 16px; background: var(--surface); color: var(--accent); font-weight: 600; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .tadd-btn svg { width: 20px; height: 20px; }
@@ -656,7 +666,21 @@ function onbDone() {
 /* ---------- drag from budget ---------- */
 let suppressClick = false;
 function setupDrag(src) {
-  let start = null, dragging = false, ghost = null, overEl = null, timer = null;
+  let start = null, dragging = false, ghost = null, overEl = null, timer = null, last = null, scrollRaf = 0;
+  // near the top or bottom edge of the grid (or over the bottom bar) the grid scrolls, so every tile can be reached
+  const autoScroll = () => {
+    scrollRaf = 0;
+    if (!dragging || !last) return;
+    const grid = $('#grid'), r = grid.getBoundingClientRect(), y = last.y, EDGE = 64;
+    let v = 0;
+    if (y > r.bottom - EDGE) v = Math.min(1, (y - (r.bottom - EDGE)) / EDGE) * 14;
+    else if (y > r.top && y < r.top + 40) v = -Math.min(1, (r.top + 40 - y) / 40) * 12;
+    if (!v) return;
+    const before = grid.scrollTop;
+    grid.scrollTop += v;
+    if (grid.scrollTop !== before) hit(last.x, last.y);
+    scrollRaf = requestAnimationFrame(autoScroll);
+  };
   const begin = (x, y) => {
     if (dragging) return;
     dragging = true; clearTimeout(timer);
@@ -666,12 +690,16 @@ function setupDrag(src) {
   };
   const move = (x, y) => {
     ghost.style.transform = `translate(${x}px, ${y}px)`;
+    last = { x, y }; hit(x, y);
+    if (!scrollRaf) scrollRaf = requestAnimationFrame(autoScroll);
+  };
+  const hit = (x, y) => {
     const el = document.elementFromPoint(x, y);
     const target = el && el.closest('.cat[data-cat]');
     if (target !== overEl) { overEl && overEl.classList.remove('drop'); overEl = target; overEl && overEl.classList.add('drop'); }
   };
   const finish = () => {
-    clearTimeout(timer);
+    clearTimeout(timer); cancelAnimationFrame(scrollRaf); scrollRaf = 0; last = null;
     const id = overEl && overEl.dataset.cat;
     overEl && overEl.classList.remove('drop');
     ghost && ghost.remove();
@@ -987,7 +1015,7 @@ function openTx({ id = null, catId = null, back = null }) {
 
   // ---------- tags: button + menu ----------
   let tags = (t && Array.isArray(t.tags) ? t.tags : []).filter((id) => tagById(id));
-  let menu = null;
+  let menu = null, pickTimer = 0;
   const tagBtn = $('#tx-tagbtn', s);
   const orderedSel = () => S.tags.filter((g) => tags.includes(g.id));
   const paintTagBtn = () => {
@@ -1005,6 +1033,7 @@ function openTx({ id = null, catId = null, back = null }) {
     const vTop = vv ? vv.offsetTop : 0, vBot = vv ? vv.offsetTop + vv.height : innerHeight;
     menu.style.left = Math.max(8, Math.min(r.right - 200, innerWidth - 208)) + 'px';
     const below = vBot - r.bottom - 14, above = r.top - vTop - 14;
+    menu.classList.toggle('up', !(below >= 220 || below >= above));
     if (below >= 220 || below >= above) { menu.style.top = (r.bottom + 6) + 'px'; menu.style.bottom = 'auto'; menu.style.maxHeight = below + 'px'; }
     else { menu.style.top = 'auto'; menu.style.bottom = (innerHeight - r.top + 6) + 'px'; menu.style.maxHeight = above + 'px'; }
   };
@@ -1012,9 +1041,9 @@ function openTx({ id = null, catId = null, back = null }) {
   const renderFoot = () => {
     const foot = $('.tfoot', menu);
     foot.innerHTML = !S.tags.length
-      ? `<button class="tmi tnew" id="tm-add">${icon('plus')}Добавить тег</button>`
+      ? `<div class="tadd-wrap"><button class="btn primary sm" id="tm-add">Добавить</button></div>`
       : (multi ? `<button class="tmi tnew" id="tm-done">${icon('check')}Готово</button>`
-        : S.tags.length >= 2 ? `<button class="tmi tmulti" id="tm-multi">${icon('list-checks')}Выбрать несколько</button>` : '')
+        : S.tags.length >= 2 ? `<button class="tmi tmulti" id="tm-multi">${icon('list-checks')}Выбрать</button>` : '')
         + `<button class="tmi tcfg" id="tm-cfg">${icon('sliders')}Настроить</button>`;
     const back = () => { tags = tags.filter((id) => tagById(id)); paintTagBtn(); if (sheetEl === s) openMenu(); };
     const ad = $('#tm-add', menu); if (ad) ad.onclick = () => { closeMenu(); openTagsPage({ add: true, onBack: back }); };
@@ -1042,7 +1071,11 @@ function openTx({ id = null, catId = null, back = null }) {
       tags = on ? tags.concat(id) : tags.filter((x) => x !== id);
       b.setAttribute('aria-selected', on); b.innerHTML = `<span>${esc(tagById(id).name)}</span>${on ? icon('check') : ''}`;
       paintTagBtn();
-      if (!multi) { setTimeout(closeMenu, reduceMotion() ? 0 : 160); return; } // let the check mark show for a moment
+      if (!multi) {
+        if (pickTimer) { clearTimeout(pickTimer); pickTimer = 0; multi = true; renderMenu(); placeMenu(); return; } // a second tag before the menu closed
+        pickTimer = setTimeout(() => { pickTimer = 0; closeMenu(); }, reduceMotion() ? 0 : 200); // let the check mark show for a moment
+        return;
+      }
       placeMenu();
     });
     renderMenu(); placeMenu();
@@ -1052,7 +1085,9 @@ function openTx({ id = null, catId = null, back = null }) {
   }
   function closeMenu() {
     if (!menu) return;
-    menu.remove(); menu = null; multi = false;
+    clearTimeout(pickTimer); pickTimer = 0;
+    const m = menu; menu = null; multi = false;
+    if (reduceMotion()) m.remove(); else { m.classList.add('out'); setTimeout(() => m.remove(), 170); }
     tagBtn.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
     if (closeTagMenu === closeMenu) closeTagMenu = null;
@@ -1369,7 +1404,7 @@ function openTagsPage({ onBack, add = false } = {}) {
 
   const countText = (id) => { const n = tagCount(id); return n ? `${n} ${plural(n, ['трата', 'траты', 'трат'])}` : 'Не используется'; };
   const rowHtml = (g) => editing === g.id
-    ? `<div class="trow2 editing" data-id="${g.id}"><div class="tedit"><input class="tinput" id="tp-edit" maxlength="14" autocomplete="off" enterkeyhint="done" value="${esc(g.name)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-edit-err"></span><span class="tcount" id="tp-edit-count"></span></div></div><button class="btn primary sm" id="tp-done">Готово</button></div>`
+    ? `<div class="trow2 editing" data-id="${g.id}"><div class="tedit"><div class="tfield"><input class="tinput" id="tp-edit" maxlength="14" autocomplete="off" enterkeyhint="done" value="${esc(g.name)}" aria-label="Название тега"><span class="tcount" id="tp-edit-count"></span></div><div class="tmeta"><span class="terr" id="tp-edit-err"></span></div></div><button class="btn primary sm" id="tp-done">Готово</button></div>`
     : `<div class="trow2" data-id="${g.id}"><button class="grip" aria-label="Перетащить «${esc(g.name)}». Стрелки вверх и вниз меняют порядок">${icon('grip')}</button><button class="tinfo" data-ren aria-label="Переименовать «${esc(g.name)}»"><span class="tname">${esc(g.name)}</span><span class="tcnt">${countText(g.id)}</span></button><button class="tact" data-ren aria-label="Переименовать">${icon('pencil')}</button><button class="tact del" data-del aria-label="Удалить «${esc(g.name)}»">${icon('trash')}</button></div>`;
 
   function render(focusGripOf) {
@@ -1379,7 +1414,7 @@ function openTagsPage({ onBack, add = false } = {}) {
       + (n ? `<div class="tcard" id="tp-list">${S.tags.map(rowHtml).join('')}</div>` : `<div class="tcard empty-card">Тегов пока нет</div>`)
       + (n && !atLimit ? `<p class="thint tcount-hint">${n} из 15 тегов</p>` : '')
       + (adding
-        ? `<div class="tcard create"><input class="tinput" id="tp-new" maxlength="14" autocomplete="off" enterkeyhint="done" placeholder="Название тега" value="${esc(addDraft)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-new-err"></span><span class="tcount" id="tp-new-count"></span></div><div class="row"><button class="btn soft sm" id="tp-cancel">Отмена</button><button class="btn primary sm" id="tp-add-ok" disabled>Добавить</button></div></div>`
+        ? `<div class="tcard create"><div class="tfield"><input class="tinput" id="tp-new" maxlength="14" autocomplete="off" enterkeyhint="done" placeholder="Название тега" value="${esc(addDraft)}" aria-label="Название тега"><span class="tcount" id="tp-new-count"></span></div><div class="tmeta"><span class="terr" id="tp-new-err"></span></div><div class="row"><button class="btn soft sm" id="tp-cancel">Отмена</button><button class="btn primary sm" id="tp-add-ok" disabled>Добавить</button></div></div>`
         : `<button class="tadd-btn" id="tp-add" ${atLimit ? 'disabled' : ''}>${icon('plus')} Добавить</button>${atLimit ? '<p class="thint">Можно создать до 15 тегов. Удалите ненужный, чтобы добавить новый</p>' : ''}`);
     // rename
     body.querySelectorAll('[data-ren]').forEach((b) => b.onclick = () => { if (editing || adding) return; editing = b.closest('.trow2').dataset.id; render(); const i = $('#tp-edit', pg); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
@@ -1479,6 +1514,7 @@ function openTagsPage({ onBack, add = false } = {}) {
     };
   }
   render();
+  if (adding) { const ni = $('#tp-new', pg); if (ni) ni.focus({ preventScroll: true }); }
 }
 
 /* --- money inputs: 150000 → 150 000 while typing --- */
