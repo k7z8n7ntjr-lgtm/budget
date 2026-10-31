@@ -180,7 +180,8 @@ input[type=date].input { min-height: 44px; }
 /* Expense sheet: own keypad instead of the iOS keyboard */
 .sheet.txs { padding-bottom: 0; gap: 10px; }
 .sheet.txs .sheet-head { margin-top: -2px; }
-.sheet.txs.typing { padding-bottom: 12px; }
+/* while typing, the sheet's white bottom runs on under the keyboard (--under), so no gap shows between them */
+.sheet.txs.typing { padding-bottom: calc(12px + var(--under, 0px)); }
 .sheet.kbmove { transition: transform .34s cubic-bezier(.32,.72,0,1), bottom .3s cubic-bezier(.32,.72,0,1), max-height .3s cubic-bezier(.32,.72,0,1); }
 .sheet.txs.typing .tray { display: none; }
 /* Bottom tray "where": categories + keypad on the grey keyboard surface, edge to edge */
@@ -1097,16 +1098,15 @@ function openTx({ id = null, catId = null, back = null }) {
   // Comment: while typing only the top block stays and the iOS keyboard takes the tray's place.
   // iOS scrolls the whole page up when a focused field would end up under the keyboard. To avoid that,
   // a tap first lifts the sheet to the expected keyboard height, then focuses the field without scrolling.
-  // If iOS still shifts the page, the visualViewport handler moves the main screen back.
   const coarse = matchMedia('(pointer: coarse)').matches;
   const glide = () => { s.classList.add('kbmove'); clearTimeout(s._glide); s._glide = setTimeout(() => s.classList.remove('kbmove'), 420); };
   const startTyping = () => {
     if (s.classList.contains('typing')) return;
     closePop(true); if (menu) closeMenu();
     s.classList.add('typing'); s.scrollTop = 0;
-    if (coarse) { glide(); s.style.bottom = kbGuess() + 'px'; s.style.maxHeight = (innerHeight - kbGuess() - 8) + 'px'; }
+    if (coarse) { glide(); seatOnKeyboard(s, kbGuess(), innerHeight - kbGuess() - 8); }
     // no keyboard came up (hardware keyboard): put the sheet back down
-    setTimeout(() => { if (s.classList.contains('typing') && !kbNow()) { glide(); s.style.bottom = ''; s.style.maxHeight = ''; } }, 900);
+    setTimeout(() => { if (s.classList.contains('typing') && !kbNow()) { glide(); seatOnKeyboard(s, 0); } }, 900);
   };
   let tap0 = null;
   commentEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; tap0 = { x: t.clientX, y: t.clientY }; }, { passive: true });
@@ -1120,7 +1120,7 @@ function openTx({ id = null, catId = null, back = null }) {
   commentEl.addEventListener('focus', startTyping);
   commentEl.addEventListener('blur', () => {
     s.classList.remove('typing'); glide();
-    s.style.bottom = ''; s.style.maxHeight = '';
+    seatOnKeyboard(s, 0);
     if (window.scrollY) window.scrollTo(0, 0);
   });
   commentEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commentEl.blur(); } });
@@ -1623,6 +1623,15 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !s
 let kbH = 0;
 try { kbH = +localStorage.getItem('budget-kb-h') || 0; } catch (_) {}
 const kbGuess = () => kbH || Math.round(innerHeight * .45);
+// Seat the expense form on the keyboard: its bottom goes KB_UNDER px under the keyboard's top edge and stays white,
+// so a keyboard a little lower than expected never shows the main screen in between.
+const KB_UNDER = 160;
+function seatOnKeyboard(sh, kb, room) {
+  if (!kb) { sh.style.bottom = ''; sh.style.maxHeight = ''; sh.style.removeProperty('--under'); return; }
+  sh.style.setProperty('--under', KB_UNDER + 'px');
+  sh.style.bottom = (kb - KB_UNDER) + 'px';
+  sh.style.maxHeight = (room + KB_UNDER) + 'px';
+}
 const kbNow = () => { const vv = window.visualViewport; return vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0; };
 if (window.visualViewport) {
   const vv = window.visualViewport;
@@ -1634,15 +1643,13 @@ if (window.visualViewport) {
       const txs = sheetEl.classList.contains('txs'), typing = sheetEl.classList.contains('typing');
       const own = !txs || typing || (document.activeElement && document.activeElement.id === 'tm-input');
       if (typing && kb > 120 && kb !== kbH) { kbH = kb; try { localStorage.setItem('budget-kb-h', kb); } catch (_) {} }
-      if (!(typing && !kb)) { // while the keyboard is still coming up, keep the early lift
+      if (typing) { if (kb) seatOnKeyboard(sheetEl, kb, vv.height - 8); } // while the keyboard is still coming up, keep the early lift
+      else {
         const k = own ? kb : 0;
         sheetEl.style.bottom = k ? k + 'px' : ''; sheetEl.style.maxHeight = k ? (vv.height - 8) + 'px' : '';
       }
     }
     if (pageEl) pageEl.style.bottom = kb ? kb + 'px' : '';
-    // safety net: if iOS scrolled the page anyway, hold the main screen where it was
-    const off = Math.round(vv.offsetTop), shift = off > 0 && (sheetEl || pageEl) ? `translateY(${off}px)` : '';
-    for (const id of ['app', 'fab']) { const el = document.getElementById(id); if (el) el.style.transform = shift; }
     if (sheetEl && sheetEl._placeMenu) sheetEl._placeMenu();
   };
   vv.addEventListener('resize', lift); vv.addEventListener('scroll', lift);
