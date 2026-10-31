@@ -1706,7 +1706,8 @@ if (window.visualViewport) {
         sheetEl.style.bottom = k ? k + 'px' : ''; sheetEl.style.maxHeight = k ? (vv.height - 8) + 'px' : '';
       }
     }
-    if (pageEl) pageEl.style.bottom = kb ? kb + 'px' : '';
+    // the tags page stays full-screen (its background goes under the keyboard); only its content is lifted above it
+    if (pageEl) pageEl.style.paddingBottom = kb ? kb + 'px' : '';
     if (sheetEl && sheetEl._placeMenu) sheetEl._placeMenu();
   };
   vv.addEventListener('resize', lift); vv.addEventListener('scroll', lift);
