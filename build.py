@@ -7,7 +7,7 @@ Bump VERSION on every release: phones only pick up new files when the service wo
 import json, pathlib, re
 from PIL import Image, ImageDraw
 
-VERSION = 'v15'
+VERSION = 'v16'
 ROOT = pathlib.Path(__file__).parent
 app = (ROOT / 'src/app.html').read_text()
 

@@ -300,6 +300,7 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 /* ---------- tags: button + menu in the expense form ---------- */
 .cmt-row { display: flex; gap: 10px; align-items: stretch; }
 .cmt-row .input { flex: 1; min-width: 0; height: 42px; }
+#tx-comment:focus-visible { outline: none; }
 .tagbtn { position: relative; flex: none; width: 144px; height: 42px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); display: flex; align-items: center; gap: 6px; padding: 0 30px 0 12px; color: var(--muted); font-size: 15px; min-width: 0; }
 .tagbtn svg { width: 16px; height: 16px; flex: none; }
 .tagbtn .tb-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1266,11 +1267,14 @@ function animateChange(before, catId, RM) {
   const after = snapshot();
   const tile = $(`#grid [data-cat="${catId}"]`);
   if (tile) {
-    // background flash (kept even with reduced motion)
+    // background flash (kept even with reduced motion): green, or red when the category ends up over its limit
+    const lim = limitAt(catById(catId).limits, view);
+    const spentNow = txIn(view).reduce((a, t) => a + (t.cat === catId ? t.amount : 0), 0);
+    const [bgF, rgb] = lim != null && spentNow > lim ? ['#FBE1DD', '210,56,42'] : ['#DDF0E4', '47,138,87'];
     const a1 = tile.animate([
-      { backgroundColor: '#FFFFFF', boxShadow: '0 0 0 0 rgba(47,138,87,0)' },
-      { backgroundColor: '#DDF0E4', boxShadow: '0 0 0 2px rgba(47,138,87,.45)', offset: 0.25 },
-      { backgroundColor: '#FFFFFF', boxShadow: '0 0 0 0 rgba(47,138,87,0)' }], { duration: 1100, easing: 'ease-out' });
+      { backgroundColor: '#FFFFFF', boxShadow: `0 0 0 0 rgba(${rgb},0)` },
+      { backgroundColor: bgF, boxShadow: `0 0 0 2px rgba(${rgb},.45)`, offset: 0.25 },
+      { backgroundColor: '#FFFFFF', boxShadow: `0 0 0 0 rgba(${rgb},0)` }], { duration: 1100, easing: 'ease-out' });
     anims.push(() => a1.cancel());
     if (!RM) {
       const a2 = tile.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 460, easing: 'cubic-bezier(.3,.7,.4,1)' });
