@@ -1,0 +1,1713 @@
+<!doctype html>
+<html lang="ru" class="pwa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3F4F1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Бюджет β">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="beta-icon-180.png">
+<link rel="icon" href="beta-icon-192.png">
+<style>html,body{margin:0}body{-webkit-text-size-adjust:100%}</style>
+<title>Бюджет β</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one narrow column — month bar, budget card (drag source), 4-column category grid, floating "+" */
+:root {
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --fg: #1B1E1C;
+  --muted: #747A76;
+  --line: #E2E5E0;
+  --key: #E9ECE7;
+  --track: #E6E9E4;
+  --accent: #24584A;
+  --accent-ink: #FFFFFF;
+  --level-ink: #1F3B32;
+  --danger: #D2382A;
+  --danger-tint: #FCE9E6;
+  --ok: #2F9A5B;
+  --warn: #E0A019;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-num: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--fg); height: 100%; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+body { font-family: var(--font); font-size: 15px; line-height: 1.35; }
+.pwa body { padding-top: env(safe-area-inset-top, 0px); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible, .seg label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.app {
+  flex: 1; min-height: 0; width: 100%; max-width: 520px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 2px 0;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.app > * { flex: none; }
+/* keep the header clear of the system blur under the status bar / Dynamic Island */
+.pwa .app { padding-top: 14px; }
+
+/* month bar */
+.bar { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; min-height: 44px; }
+.month { grid-column: 2; justify-self: center; display: flex; align-items: center; gap: 0; transition: opacity .2s; }
+body.toasting .month { opacity: 0; }
+.month h1 { font-size: 20px; font-weight: 700; margin: 0; min-width: 6.6em; text-align: center; letter-spacing: -0.01em; white-space: nowrap; }
+#settings-btn { grid-column: 3; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--fg); }
+.icon-btn:active { background: var(--track); }
+.icon-btn[disabled] { opacity: .25; cursor: default; }
+.icon-btn svg { width: 22px; height: 22px; }
+
+/* demo banner */
+.demo { display: flex; align-items: center; gap: 12px; justify-content: space-between; background: #FFF6DD; color: #6A5312; border-radius: 14px; padding: 10px 12px; font-size: 13px; }
+.demo button { font-weight: 600; white-space: nowrap; color: #6A5312; text-decoration: underline; }
+
+/* Budget card as a level: the "water" = what is left of the month's budget, sinking as money is spent.
+   Water and the empty part are close in tone, so the text keeps one colour over both and is never cut by the waterline.
+   Two looks, switched in settings (S.settings.card): dark (default) and light. */
+.budget { display: block; }
+.bcard { --top: #4A8070; --water: #1F4F42; --ink: #fff; position: relative; display: block; width: 100%; height: 124px; border-radius: 22px; overflow: hidden; text-align: left; background: var(--top); color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s, opacity .15s; }
+.bcard.light { --top: var(--surface); --water: #BFD5C7; --ink: var(--level-ink); }
+.bcard.over { --top: var(--danger-tint); --ink: var(--danger); }
+.bcard .water { position: absolute; left: 0; right: 0; bottom: 0; background: var(--water); }
+.bcard .layer { position: absolute; inset: 0; padding: 14px 18px 12px; display: flex; flex-direction: column; }
+.bcard .lab { font-size: 11px; letter-spacing: .09em; font-weight: 700; text-transform: uppercase; opacity: .8; }
+.bcard .big { font-family: var(--font-num); font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bcard .sp { font-size: 13px; margin-top: 4px; opacity: .85; font-variant-numeric: tabular-nums; }
+/* onboarding hint under the card: shown until the first drag onto a category, at most on 3 different days (SPEC 3.3) */
+.onb { margin: 6px 4px 0; font-size: 13px; line-height: 1.3; color: var(--muted); transition: opacity .3s; }
+.onb.gone { opacity: 0; }
+.bcard.lifted { transform: scale(.97); opacity: .6; }
+.label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+
+/* disc + ring (shared by budget and categories) */
+.disc { position: relative; display: block; width: 100%; height: 100%; }
+.disc svg.ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.disc-in { position: absolute; inset: 9%; border-radius: 50%; display: grid; place-items: center; background: var(--tint, var(--track)); color: var(--c, var(--muted)); }
+.disc-in svg { width: 44%; height: 44%; }
+.disc.nolimit .disc-in { background: var(--track); }
+.disc.over .disc-in { background: var(--danger-tint); }
+
+/* category tiles: 2 columns; only the grid scrolls when there are many */
+.grid-wrap { flex: 1 1 auto !important; min-height: 0; }
+.grid-wrap { margin: -10px -10px 0; }
+.grid { height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; padding: 10px 10px 12px; }
+.cat { background: var(--surface); border-radius: 16px; padding: 9px 12px 10px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; min-height: 70px; text-align: left; transition: transform .12s, box-shadow .12s; }
+.cat:active { transform: scale(.98); }
+.cat-name { display: flex; align-items: center; gap: 6px; font-size: 13.5px; min-width: 0; }
+.cat-name svg { width: 17px; height: 17px; flex: none; color: var(--c); }
+.cat-name span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-val { display: flex; align-items: baseline; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.cat-spent { font-size: 17px; font-weight: 700; }
+.cat-limit { font-size: 11.5px; color: var(--muted); }
+.cat.over .cat-spent, .cat.over .cat-limit { color: var(--danger); }
+.pb { display: block; height: 4px; border-radius: 2px; background: var(--track); margin-top: auto; overflow: hidden; }
+.pb i { display: block; height: 100%; border-radius: 2px; }
+.cat.add { background: transparent; border: 1.5px dashed #C3C8C2; flex-direction: row; align-items: center; justify-content: center; gap: 6px; font-weight: 600; color: var(--muted); }
+.cat.add svg { width: 18px; height: 18px; }
+body.dragging .cat:not(.add) { box-shadow: 0 0 0 1.5px var(--line); }
+.cat.drop { box-shadow: 0 0 0 2px var(--accent) !important; transform: scale(1.03); }
+.cat.over.drop { box-shadow: 0 0 0 2px var(--danger) !important; }
+
+.ghost { position: fixed; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 24px; font-weight: 700; pointer-events: none; z-index: 50; box-shadow: 0 8px 24px rgba(20,40,30,.3); }
+
+/* Bottom bar: full width, a soft hill that peaks in the middle; the whole bar adds an expense. */
+.addbar { flex: none; position: relative; display: block; width: 100%; height: calc(56px + max(0px, env(safe-area-inset-bottom, 0px) - var(--bar-drop))); color: var(--accent-ink); z-index: 5; --bar-drop: 8px; }
+.addbar .shape { position: absolute; left: 0; top: 0; width: 100%; height: 56px; display: block; filter: drop-shadow(0 -3px 10px rgba(20,60,45,.16)); }
+.addbar .shape path { fill: var(--accent); }
+.addbar::after { content: ""; position: absolute; left: 0; right: 0; top: 55px; bottom: 0; background: var(--accent); }
+.addbar .plus { position: absolute; left: 50%; top: 9px; width: 40px; height: 40px; margin-left: -20px; display: grid; place-items: center; transition: transform .12s; }
+.addbar .plus svg { width: 36px; height: 36px; stroke-width: 2.4; }
+.addbar:active .plus { transform: scale(.9); }
+.addbar:focus-visible { outline: none; }
+.addbar:focus-visible .plus { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 50%; }
+
+/* sheets */
+.backdrop { position: fixed; inset: 0; background: rgba(20,24,22,.32); z-index: 20; opacity: 0; transition: opacity .29s ease-out; }
+.backdrop.on { opacity: 1; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-width: 560px; margin: 0 auto; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); border-radius: 22px 22px 0 0; padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); transform: translateY(100%); transition: transform .34s cubic-bezier(.32,.72,0,1); display: flex; flex-direction: column; gap: 14px; }
+.sheet.on { transform: none; transition-duration: .38s; transition-timing-function: cubic-bezier(.22,.8,.24,1); } /* opening: a softer start, the same curve family as closing */
+@media (prefers-reduced-motion: reduce) {
+  .cat { transition: none; }
+  .sheet { transform: none; opacity: 0; transition: opacity .2s; }
+  .sheet.on { opacity: 1; transition-duration: .2s; }
+  .backdrop { transition: opacity .2s; }
+}
+.grab-zone { flex: none; margin: -8px 0 -6px; padding: 8px 0 10px; touch-action: none; cursor: grab; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: #D5D9D4; margin: 0 auto; }
+.sheet-head { touch-action: none; }
+.sheet-head { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.sheet-head h2 { font-size: 18px; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-head .disc { width: 40px; height: 40px; flex: none; }
+
+.amount { display: flex; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--line); padding-bottom: 4px; }
+.amount:focus-within { border-color: var(--accent); }
+.amount input { flex: 1; min-width: 0; border: 0; outline: 0; font-family: var(--font-num); font-size: 38px; font-weight: 700; padding: 0; background: transparent; color: var(--fg); }
+.amount span { font-size: 28px; color: var(--muted); font-weight: 600; }
+.row { display: flex; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.field > span { font-size: 12px; color: var(--muted); }
+.input { width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-width: 0; -webkit-appearance: none; appearance: none; }
+input[type=date].input { min-height: 44px; }
+.row .field.date { flex: 0 0 140px; }
+
+.pick { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 2px 4px; }
+.pick button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; border-radius: 14px; min-width: 0; }
+.pick .disc { width: 38px; height: 38px; }
+.pick small { font-size: 10.5px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick button[aria-pressed=true] { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.pick button[aria-pressed=true] .disc-in { background: var(--accent); color: var(--accent-ink); }
+.pick button[aria-pressed=true] small { color: var(--fg); font-weight: 600; }
+/* Category chips in the expense sheet: flat, neutral, in 2–3 rows that scroll sideways together, edge to edge */
+.chips { position: relative; flex: none; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x;
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding: 2px max(16px, env(safe-area-inset-right, 0px)) 2px max(16px, env(safe-area-inset-left, 0px)); }
+.chips::-webkit-scrollbar { display: none; }
+.chips-in { display: flex; flex-direction: column; gap: 8px; width: max-content; }
+.chips-row { display: flex; gap: 8px; }
+.chip { height: 38px; padding: 0 15px; border-radius: 19px; background: var(--bg); border: 1px solid var(--line); color: var(--fg); font-size: 15px; font-weight: 500; white-space: nowrap; transition: background .12s, color .12s; }
+.chip:active { background: var(--line); }
+.chip[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.sub { font-size: 13px; color: var(--muted); }
+.sub.tight { font-size: 12px; margin-top: -4px; }
+
+/* Expense sheet: own keypad instead of the iOS keyboard */
+.sheet.txs { padding-bottom: 0; gap: 10px; }
+.sheet.txs .sheet-head { margin-top: -2px; }
+/* While typing, the sheet stays pinned to the screen bottom and the tray is swapped for white padding of the keyboard
+   height (--kb), in the same frame and without animation: the sheet keeps about the same height, so it neither dips
+   nor jumps, and the keyboard slides over white. */
+.sheet.txs.typing { padding-bottom: calc(4px + var(--kb, 0px)); max-height: none; }
+/* until the comment is tapped, a long press must not select text or focus the field natively (iOS would scroll the page) */
+.sheet.txs:not(.typing) #tx-comment[readonly] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.sheet.txs.typing .tray { display: none; }
+/* Bottom tray "where": categories + keypad on the grey keyboard surface, edge to edge */
+.tray { flex: none; display: flex; flex-direction: column; gap: 12px; background: var(--bg); padding-top: calc(14px + var(--tray-extra, 0px)); margin-top: 6px;
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px))); }
+.tray .chips { margin-left: 0; margin-right: 0; }
+.tray .chip { background: var(--surface); border-color: transparent; box-shadow: 0 1px 0 rgba(0,0,0,.07); }
+.tray .chip:active { background: var(--line); }
+.tray .chip[aria-pressed=true] { background: var(--accent); border-color: var(--accent); box-shadow: none; }
+.tray .pad-area { margin-left: 0; margin-right: 0; padding-top: 0; }
+#tx-title { display: flex; align-items: center; gap: 6px; }
+#tx-title .arrow { display: grid; color: var(--muted); }
+#tx-title .arrow svg { width: 18px; height: 18px; }
+#tx-title .disc { width: 28px; height: 28px; flex: none; }
+#tx-title .tname { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.amt-row { display: flex; align-items: stretch; gap: 10px; }
+.amt { flex: 1; min-width: 0; height: 56px; display: flex; align-items: flex-end; gap: 6px; border-bottom: 2px solid var(--accent); padding-bottom: 7px; cursor: text; }
+.amt b { font-family: var(--font-num); font-size: 38px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; line-height: 1; }
+.amt b.blank { color: #B9BEBA; }
+.amt .cur { margin-left: auto; font-size: 28px; line-height: 1; color: var(--muted); font-weight: 600; padding-bottom: 2px; }
+.caret { display: inline-block; width: 2px; height: 0.8em; background: var(--accent); margin-left: 2px; vertical-align: -0.04em; animation: blink 1s steps(1) infinite; }
+.typing .caret { visibility: hidden; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+/* Date wheel, iOS-alarm style: rows sit on a cylinder, the selected one in a band.
+   The chip shows only the date; touching it pops a 5-row wheel over the form. */
+.datechip { position: relative; flex: none; width: 144px; height: 56px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ns-resize; }
+.datechip .dlabel { position: absolute; inset: 0; padding: 0 30px 0 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; transition: opacity .12s; }
+/* the date and the tag button put their arrow in the same place: same size, colour and distance from the right edge */
+.datechip .dlabel svg, .tagbtn .tb-arrow { position: absolute; right: 9px; top: 50%; margin-top: -8px; width: 16px; height: 16px; color: #A3A9A5; }
+.datechip.open .dlabel { opacity: .25; }
+.wheel { position: absolute; inset: 0; perspective: 260px; pointer-events: none; }
+.wheel::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: var(--band); margin-top: calc(var(--band) / -2); border-radius: 8px; background: var(--key); }
+.wrow { position: absolute; left: 0; right: 0; top: 50%; height: var(--rh); margin-top: calc(var(--rh) / -2); display: flex; align-items: center; justify-content: center; font-size: var(--fs); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; backface-visibility: hidden; will-change: transform, opacity; }
+.wrow.sel { color: var(--fg); font-weight: 600; }
+.wheelpop { position: fixed; z-index: 30; width: 172px; height: 178px; border-radius: 18px; background: var(--surface); box-shadow: 0 12px 32px rgba(16,30,22,.2), 0 0 0 1px rgba(0,0,0,.05); touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; animation: wpin .18s cubic-bezier(.3,.7,.3,1); }
+.wheelpop.out { animation: wpout .14s ease-in forwards; }
+.wheelpop .wheel { --rh: 34px; --band: 36px; --fs: 20px; perspective: 380px; }
+.wheelpop .wheel::before { left: 8px; right: 8px; border-radius: 10px; background: var(--bg); }
+@keyframes wpin { from { opacity: 0; transform: scaleY(.45); } }
+@keyframes wpout { to { opacity: 0; transform: scaleY(.6); } }
+@media (prefers-reduced-motion: reduce) { .wheelpop, .wheelpop.out { animation: none; } }
+.pad-area { flex: none; background: var(--bg);
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+.keypad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.keypad button { height: var(--key-h, 48px); border-radius: 10px; background: var(--surface); font-family: var(--font-num); font-size: 24px; font-weight: 500; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0,0,0,.08); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.keypad button.f { background: var(--key); }
+.keypad button.ok { background: var(--accent); color: var(--accent-ink); }
+.keypad button.ok svg { width: 26px; height: 26px; stroke-width: 2.6; }
+.keypad button.ok:disabled { background: var(--key); color: #B3B8B4; box-shadow: none; cursor: default; }
+.keypad button.ok:not(:disabled):active { transform: scale(.94); }
+/* ✓ confirms: the key springs and the tick redraws */
+.keypad button.ok.pop { animation: okpop .26s ease-out; }
+.keypad button.ok.pop svg path { stroke-dasharray: 24; animation: okdraw .22s ease-out; }
+@keyframes okpop { 0% { transform: scale(1); } 30% { transform: scale(.86); } 65% { transform: scale(1.07); } 100% { transform: scale(1); } }
+@keyframes okdraw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .keypad button.ok.pop, .keypad button.ok.pop svg path { animation: none; } }
+.sheet-head .del { color: var(--danger); }
+.sheet-head .del.armed { background: var(--danger); color: #fff; }
+.keypad button:active { background: var(--line); }
+.keypad svg { width: 24px; height: 24px; }
+.row-actions { flex-direction: row; }
+.row-actions .btn.primary { flex: 1; }
+.btn.icon-only { width: 50px; padding: 0; flex: none; background: var(--danger-tint); }
+.btn.icon-only.armed { background: var(--danger); color: #fff; }
+.btn { min-height: 50px; border-radius: 14px; font-weight: 600; font-size: 16px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary[disabled] { background: var(--key); color: #A3A9A5; cursor: default; }
+.btn.soft { background: var(--bg); }
+.btn.danger { color: var(--danger); }
+.btn.danger.armed { background: var(--danger); color: #fff; }
+.btn svg { width: 20px; height: 20px; }
+.actions { display: flex; flex-direction: column; gap: 8px; }
+
+.summary { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; color: var(--muted); }
+.summary b { color: var(--fg); font-weight: 600; }
+.summary .over { color: var(--danger); font-weight: 600; }
+.day { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 4px; }
+.tx { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
+.tx .c { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx .a { font-weight: 600; white-space: nowrap; }
+.list { display: flex; flex-direction: column; }
+.empty { color: var(--muted); text-align: center; padding: 20px 0; }
+
+.seg { display: flex; background: var(--bg); border-radius: 12px; padding: 3px; }
+.seg label { flex: 1; text-align: center; padding: 8px 4px; border-radius: 10px; font-size: 14px; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.1); font-weight: 600; }
+.icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+.icons button { aspect-ratio: 1; max-width: 100%; border-radius: 12px; display: grid; place-items: center; color: var(--muted); background: var(--bg); }
+.icons button svg { width: 22px; height: 22px; }
+.icons button[aria-pressed=true] { background: var(--c); color: #fff; }
+.colors { display: flex; flex-wrap: wrap; gap: 10px; }
+.colors button { width: 32px; height: 32px; border-radius: 50%; background: var(--sw); }
+.colors button[aria-pressed=true] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--sw); }
+
+.switch { display: flex; align-items: flex-start; gap: 12px; }
+.switch input { appearance: none; -webkit-appearance: none; flex: none; width: 50px; height: 30px; border-radius: 15px; background: var(--line); position: relative; transition: background .15s; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .15s; }
+.switch input:checked { background: var(--ok); }
+.switch input:checked::after { transform: translateX(20px); }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
+textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+
+/* Toast: a small light pill in the header row, in place of the month name */
+/* ---------- tags: button + menu in the expense form ---------- */
+.cmt-row { display: flex; gap: 10px; align-items: stretch; }
+.cmt-row .input { flex: 1; min-width: 0; height: 42px; }
+#tx-comment:focus-visible { outline: none; }
+.tagbtn { position: relative; flex: none; width: 144px; height: 42px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); display: flex; align-items: center; gap: 6px; padding: 0 30px 0 12px; color: var(--muted); font-size: 15px; min-width: 0; }
+.tagbtn svg { width: 16px; height: 16px; flex: none; }
+.tagbtn .tb-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tagbtn.on { background: #E7EFEA; border-color: #2F5446; color: #2F5446; font-weight: 600; }
+.tagbtn.on .tb-ico path { fill: currentColor; }
+.tagbtn.on .tb-ico circle { fill: #E7EFEA; stroke: #E7EFEA; }
+.tagbtn.on .tb-arrow { color: #2F5446; opacity: .55; }
+.tagbtn .tb-more { flex: none; font-size: 12px; font-weight: 700; background: #2F5446; color: #fff; border-radius: 8px; padding: 1px 6px; }
+.tmenu { position: fixed; z-index: 30; width: 200px; background: var(--surface); border-radius: 14px; box-shadow: 0 12px 32px rgba(16,30,22,.2), 0 0 0 1px rgba(0,0,0,.05); display: flex; flex-direction: column; overflow: hidden; animation: tmin .16s ease-out; }
+@keyframes tmin { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .tmenu { animation: none; } }
+.tlist { flex: 0 1 auto; min-height: 0; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.trow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px; border-radius: 10px; font-size: 15px; text-align: left; color: var(--fg); }
+.trow span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.trow svg { width: 18px; height: 18px; flex: none; color: #2F5446; }
+.trow[aria-selected=true] { background: #EEF3F0; font-weight: 600; }
+.tfoot { flex: none; border-top: 1px solid var(--line); padding: 4px; }
+.tmi { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 10px; border-radius: 10px; font-size: 15px; text-align: left; }
+.tmi svg { width: 18px; height: 18px; flex: none; }
+.tmi.tnew { color: var(--accent); }
+.tmi.tnew:disabled { color: #A8AEAA; cursor: default; }
+.tmi.tcfg, .tmi.tmulti { color: var(--muted); }
+.tempty { display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 6px; }
+.tempty b { font-size: 15px; }
+.tempty span { font-size: 13px; color: var(--muted); }
+.tinput { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg); outline: none; -webkit-appearance: none; appearance: none; }
+.tinput.err { border-color: var(--danger); }
+.tmeta { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; min-height: 15px; }
+.terr { color: var(--danger); }
+.tcount { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.tcount.max { color: var(--danger); }
+.tpick svg path { fill: currentColor; }
+.tpick span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.sm { min-height: 40px; font-size: 15px; border-radius: 10px; }
+
+/* ---------- tags page (full screen, slides in from the right) ---------- */
+.page { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); transform: translateX(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+.page.on { transform: none; transition-duration: .38s; transition-timing-function: cubic-bezier(.22,.8,.24,1); }
+@media (prefers-reduced-motion: reduce) { .page { transition: none; } }
+.page-bar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; min-height: 44px; padding: 8px max(8px, env(safe-area-inset-right, 0px)) 4px max(8px, env(safe-area-inset-left, 0px)); flex: none; }
+.page-bar h1 { grid-column: 2; justify-self: center; margin: 0; font-size: 20px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.page-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 12px; }
+.thint { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.4; }
+.tcard { background: var(--surface); border-radius: 16px; position: relative; }
+.tcard.empty-card { padding: 18px 16px; color: var(--muted); text-align: center; }
+.trow2 { display: flex; align-items: center; min-height: 56px; padding-right: 4px; background: var(--surface); position: relative; border-top: 1px solid var(--line); }
+.trow2:first-child { border-top: 0; border-radius: 16px 16px 0 0; }
+.trow2:last-child { border-radius: 0 0 16px 16px; }
+.trow2:only-child { border-radius: 16px; }
+.trow2.shift { transition: transform .22s cubic-bezier(.3,.7,.3,1); }
+.trow2.dragging { z-index: 3; border-radius: 12px; box-shadow: 0 10px 28px rgba(16,30,22,.18); transition: none; }
+.grip { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: #9AA09C; touch-action: none; cursor: grab; }
+.grip svg { width: 20px; height: 20px; }
+.tinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 8px 0; text-align: left; }
+.tinfo .tname { font-size: 16px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tinfo .tcnt { font-size: 13px; color: var(--muted); }
+.tact { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); border-radius: 12px; }
+.tact svg { width: 19px; height: 19px; }
+.tact.del { color: var(--danger); }
+.trow2.editing { align-items: flex-start; gap: 8px; padding: 8px 8px 8px 12px; }
+.tedit { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tadd-btn { min-height: 52px; border-radius: 16px; background: var(--surface); color: var(--accent); font-weight: 600; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tadd-btn svg { width: 20px; height: 20px; }
+.tadd-btn:disabled { color: #A8AEAA; cursor: default; }
+.tcard.create { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.tcard.create .row { display: flex; gap: 8px; }
+.tcard.create .row .btn { flex: 1; }
+.setrow { display: flex; align-items: center; gap: 8px; min-height: 48px; font-size: 16px; text-align: left; width: 100%; }
+.setrow .grow { flex: 1; }
+.setrow .sub { font-variant-numeric: tabular-nums; }
+.setrow svg { width: 20px; height: 20px; color: var(--muted); }
+.confirm { position: fixed; inset: 0; z-index: 50; }
+.confirm .cbg { position: absolute; inset: 0; background: rgba(20,24,22,.32); animation: cfade .2s ease-out; }
+.confirm .csheet { position: absolute; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; background: var(--surface); border-radius: 22px 22px 0 0; padding: 20px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 8px; animation: cup .28s cubic-bezier(.32,.72,0,1); }
+.confirm h3 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.confirm p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.confirm .cdel { background: var(--danger); color: #fff; }
+@keyframes cfade { from { opacity: 0; } }
+@keyframes cup { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .confirm .cbg, .confirm .csheet { animation: none; } }
+
+.toast { position: fixed; left: 50%; top: 40px; transform: translate(-50%, -50%); background: #fff; color: var(--fg); padding: 6px 12px; border-radius: 12px; box-shadow: 0 8px 24px rgba(16,30,22,.16); font-size: 14px; font-weight: 600; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; z-index: 60; pointer-events: none; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+
+<div class="app" id="app">
+  <div class="bar">
+    <div class="month">
+      <button class="icon-btn" id="prev" aria-label="Предыдущий месяц"></button>
+      <h1 id="month-title"></h1>
+      <button class="icon-btn" id="next" aria-label="Следующий месяц"></button>
+    </div>
+    <button class="icon-btn" id="settings-btn" aria-label="Настройки"></button>
+  </div>
+  <div id="demo"></div>
+  <section class="budget" id="budget"></section>
+  <div class="grid-wrap" id="grid-wrap"><section class="grid" id="grid" aria-label="Категории"></section></div>
+</div>
+<button class="addbar" id="fab" aria-label="Добавить трату">
+  <svg class="shape" viewBox="0 0 400 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 56 V26 C70 26 118 2 200 2 C282 2 330 26 400 26 V56 Z"/></svg>
+  <span class="plus"></span>
+</button>
+<input type="file" id="import-file" accept="application/json,.json" hidden>
+
+<script>
+(() => {
+'use strict';
+/* ---------- icons (Lucide, ISC licence) ---------- */
+const ICONS = {
+  'shopping-cart': '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  'utensils': '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  'coffee': '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>',
+  'wine': '<path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/>',
+  'bus': '<path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/>',
+  'car': '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  'fuel': '<line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
+  'tram': '<rect width="16" height="16" x="4" y="3" rx="2"/><path d="M4 11h16"/><path d="M12 3v8"/><path d="m8 19-2 3"/><path d="m18 22-2-3"/><path d="M8 15h.01"/><path d="M16 15h.01"/>',
+  'plane': '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  'house': '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  'sofa': '<path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M4 18v2"/><path d="M20 18v2"/><path d="M12 4v9"/>',
+  'zap': '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  'wifi': '<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/>',
+  'smartphone': '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+  'repeat': '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  'wrench': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  'shield-plus': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M9 12h6"/><path d="M12 9v6"/>',
+  'pill': '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+  'activity': '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+  'scissors': '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+  'gift': '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  'heart': '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  'users': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  'paw': '<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>',
+  'shirt': '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+  'shopping-bag': '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  'book': '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  'music': '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  'film': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+  'gamepad': '<line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
+  'briefcase': '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
+  'credit-card': '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
+  'star': '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  'package': '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  'dots': '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  /* UI */
+  'landmark': '<line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/>',
+  'plus': '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  'left': '<path d="m15 18-6-6 6-6"/>',
+  'right': '<path d="m9 18 6-6-6-6"/>',
+  'sliders': '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+  'list-checks': '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+  'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  'backspace': '<path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/>',
+  'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+  'chevrons-up-down': '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
+  'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  'check': '<path d="M20 6 9 17l-5-5"/>',
+  'tag': '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
+  'grip': '<line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="17" y2="17"/>',
+  'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+};
+const CAT_ICONS = Object.keys(ICONS).slice(0, Object.keys(ICONS).indexOf('landmark'));
+const COLORS = ['#3A8F5C','#D9822B','#C2577A','#3D6FD1','#7A5AC8','#2A9BA3','#B8923A','#6B7A3A','#5B6B80','#A0522D'];
+const icon = (n, cls) => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ICONS.dots}</svg>`;
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const NF = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
+const rub = (n) => NF.format(Math.round(n * 100) / 100) + ' ₽';
+const pad = (n) => String(n).padStart(2, '0');
+const dateStr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => dateStr(new Date());
+const ymOf = (ds) => ds.slice(0, 7);
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MONTHS_IN = ['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'];
+const ymParts = (ym) => ym.split('-').map(Number);
+const monthTitle = (ym) => { const [y, m] = ymParts(ym); return MONTHS[m - 1] + (y === new Date().getFullYear() ? '' : ' ' + y); };
+const monthIn = (ym) => { const [y, m] = ymParts(ym); return MONTHS_IN[m - 1] + (y === new Date().getFullYear() ? '' : ' ' + y); };
+const daysIn = (ym) => { const [y, m] = ymParts(ym); return new Date(y, m, 0).getDate(); };
+const shiftYM = (ym, d) => { const [y, m] = ymParts(ym); const t = new Date(y, m - 1 + d, 1); return `${t.getFullYear()}-${pad(t.getMonth() + 1)}`; };
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+function parseAmount(s) {
+  s = String(s || '').replace(/[\s ]/g, '').replace(/,/g, '.');
+  if (!s || !/^[\d.+]+$/.test(s)) return NaN;
+  const sum = s.split('+').filter(Boolean).reduce((a, p) => a + parseFloat(p), 0);
+  return Math.round(sum * 100) / 100;
+}
+
+/* ---------- state ---------- */
+const KEY = 'monthly-budget-beta'; // test copy: never touches the real data
+let S;
+let view = ymOf(today());
+
+// Limits are stored per month they start from: { "2026-10": 30000, "2027-01": 35000 }. null = no limit.
+function limitAt(map, ym) {
+  let val = undefined, best = '';
+  for (const k in map || {}) if (k <= ym && k > best) { best = k; val = map[k]; }
+  return val == null ? null : val;
+}
+function setLimitFrom(map, ym, value) {
+  for (const k of Object.keys(map)) if (k > ym) delete map[k];
+  map[ym] = value;
+}
+
+function seed() {
+  const ym = ymOf(today());
+  const C = (name, icon, color, limit, type = 'even') => ({ id: uid(), name, icon, color, type, created: ym, limits: { [ym]: limit } });
+  const cats = [
+    C('Транспорт', 'bus', COLORS[0], 5000),
+    C('Еда вне дома', 'utensils', COLORS[1], 30000),
+    C('Продукты', 'shopping-cart', COLORS[2], 30000),
+    C('Быт и дом', 'sofa', COLORS[6], 8000),
+    C('Здоровье', 'shield-plus', COLORS[3], 23000),
+    C('Сервисы/ЖКУ', 'house', COLORS[8], 18000, 'oneoff'),
+    C('Подарки', 'gift', COLORS[4], 3000),
+    C('Разное', 'package', COLORS[5], null),
+    C('Близкие', 'users', COLORS[9], null),
+    C('Поездки', 'plane', COLORS[7], null),
+    C('Одежда', 'shirt', COLORS[2], null),
+  ];
+  // Example spending, flagged demo:true so it can be cleared with one tap.
+  const d = new Date().getDate();
+  const day = (n) => `${ym}-${pad(Math.max(1, Math.min(n, d)))}`;
+  const ex = [
+    [0, 1840, 3, 'Такси до офиса'], [0, 466, 12, 'Метро'],
+    [1, 5120, 4, 'Ужин с друзьями'], [1, 3980, 11, 'Обеды за неделю'], [1, 3417, 18, 'Кофе и ланч'],
+    [2, 9850, 2, 'Закупка на неделю'], [2, 12340, 9, 'Ашан'], [2, 7310, 15, 'Вкусвилл'], [2, 5137, 20, 'Овощи и молочка'],
+    [3, 6115, 8, 'Хозтовары'],
+    [4, 14200, 6, 'Стоматолог'], [4, 6631, 16, 'Аптека'],
+    [5, 16676, 10, 'Квартплата и интернет'],
+    [6, 588, 14, 'Открытка и цветы'],
+    [7, 8749, 13, ''],
+    [8, 16032, 7, 'Маме на день рождения'],
+    [9, 7270, 17, 'Билеты на поезд'],
+  ];
+  const tx = ex.map(([c, amount, dd, comment]) => ({ id: uid(), cat: cats[c].id, amount, date: day(dd), comment, demo: true }));
+  return { v: 1, budget: { [ym]: 150000 }, categories: cats, tx, tags: [], settings: { pace: false, card: 'dark' } };
+}
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.categories) && Array.isArray(d.tx)) { if (!Array.isArray(d.tags)) d.tags = []; fixSettings(d); return d; } } } catch (e) {}
+  const s = seed(); S = s; save(); return s;
+}
+// settings added later than the data format: fill defaults so older data and imported copies keep working
+function fixSettings(d) {
+  d.settings = d.settings || {};
+  if (typeof d.settings.pace !== 'boolean') d.settings.pace = false;
+  if (d.settings.card !== 'light') d.settings.card = 'dark';
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { toast('Не получилось сохранить: хранилище браузера недоступно'); }
+}
+
+/* ---------- computations ---------- */
+const catById = (id) => S.categories.find((c) => c.id === id);
+const txIn = (ym) => S.tx.filter((t) => ymOf(t.date) === ym);
+function visibleCats(ym) {
+  const used = new Set(txIn(ym).map((t) => t.cat));
+  return S.categories.filter((c) => (c.created || '0000-00') <= ym || used.has(c.id));
+}
+function monthFraction(ym) {
+  const cur = ymOf(today());
+  if (ym < cur) return 1;
+  if (ym > cur) return 0;
+  return new Date().getDate() / daysIn(ym);
+}
+// Category colour comes only from its state: no spending → gray, fine → green, ahead of pace → yellow, far ahead or over → red.
+const STATE_COLOR = { idle: '#8C928E', ok: '#2F9A5B', warn: '#D08A0C', over: '#D2382A' };
+const NEUTRAL = '#56605A';
+function catState(cat, spent, limit, ym) {
+  if (!(spent > 0)) return 'idle';
+  if (limit == null) return 'ok';
+  if (spent > limit) return 'over';
+  if (!S.settings.pace || cat.type === 'oneoff') return 'ok';
+  const expected = Math.max(limit * monthFraction(ym), limit * 0.12); // buffer for the first days of the month
+  const pace = spent / expected;
+  if (pace <= 1) return 'ok';
+  if (pace <= 1.2) return 'warn';
+  return 'over';
+}
+
+/* ---------- rendering ---------- */
+function disc({ iconName, color, pct = null, ring = null, cls = '', inner = '' }) {
+  const r = 46, C = 2 * Math.PI * r;
+  const p = pct == null ? 0 : Math.max(0, Math.min(1, pct));
+  const ringSvg = pct == null ? '' : `<svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--track)" stroke-width="6"/>
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="${ring}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(p === 0 ? 0 : Math.max(C * p, 10)).toFixed(2)} ${C.toFixed(2)}" ${p === 0 ? 'stroke-opacity="0"' : ''}/>
+    </svg>`;
+  const style = color ? `--c:${color};--tint:${hexA(color, 0.13)}` : '';
+  return `<span class="disc ${cls}" style="${style}">${ringSvg}<span class="disc-in">${inner || icon(iconName)}</span></span>`;
+}
+
+function render() {
+  stopAnims();
+  const cur = ymOf(today());
+  $('#month-title').textContent = monthTitle(view);
+  $('#next').disabled = view >= cur;
+
+  const txs = txIn(view);
+  const spentBy = {};
+  let total = 0;
+  for (const t of txs) { spentBy[t.cat] = (spentBy[t.cat] || 0) + t.amount; total += t.amount; }
+
+  // demo banner
+  const hasDemo = S.tx.some((t) => t.demo);
+  $('#demo').innerHTML = hasDemo ? `<div class="demo"><span>Сейчас показаны примеры трат, чтобы было видно, как всё работает.</span><button id="clear-demo">Убрать примеры</button></div>` : '';
+  if (hasDemo) $('#clear-demo').onclick = () => { S.tx = S.tx.filter((t) => !t.demo); save(); render(); toast('Примеры удалены'); };
+
+  // budget
+  const budget = limitAt(S.budget, view);
+  const over = budget != null && total > budget;
+  const left = budget == null ? null : budget - total;
+  const cardBody = (lab, big, sp) => `<span class="lab">${lab}</span><span class="big">${big}</span><span class="sp">${sp}</span>`;
+  let body, level = null;
+  if (budget == null) body = cardBody('Потрачено', rub(total), 'Бюджет на месяц не задан');
+  else if (over) body = cardBody('Перерасход', '−' + rub(-left), `потрачено ${rub(total)} из ${rub(budget)}`);
+  else { body = cardBody('Осталось', rub(left), `потрачено ${rub(total)} из ${rub(budget)}`); level = left / budget; }
+  $('#budget').innerHTML = `<button class="bcard ${S.settings.card === 'light' ? 'light' : ''} ${over ? 'over' : ''}" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
+    ${level != null ? `<span class="water" aria-hidden="true" style="height: ${(level * 100).toFixed(2)}%"></span>` : ''}
+    <span class="layer">${body}</span>
+  </button>${onbShow ? '<p class="onb" id="onb">Зажмите карточку и перетащите на категорию</p>' : ''}`;
+  setupDrag($('#budget-src'));
+
+  // categories
+  const cats = visibleCats(view);
+  $('#grid').innerHTML = cats.map((c) => {
+    const spent = spentBy[c.id] || 0;
+    const limit = limitAt(c.limits, view);
+    const col = STATE_COLOR[catState(c, spent, limit, view)];
+    const isOver = limit != null && spent > limit;
+    const sub = limit == null ? '' : isOver ? `+${rub(spent - limit)}` : `/ ${rub(limit)}`;
+    const pct = limit == null ? 0 : Math.min(100, spent / limit * 100);
+    const bar = limit == null ? '' : `<span class="pb"><i style="width:${spent > 0 ? Math.max(pct, 3).toFixed(1) : 0}%;background:${col}"></i></span>`;
+    return `<button class="cat ${isOver ? 'over' : ''}" data-cat="${c.id}" style="--c:${col}">
+      <span class="cat-name">${icon(c.icon)}<span>${esc(c.name)}</span></span>
+      <span class="cat-val"><span class="cat-spent num">${rub(spent)}</span><span class="cat-limit num">${sub}</span></span>${bar}
+    </button>`;
+  }).join('') + `<button class="cat add" id="add-cat">${icon('plus')} Категория</button>`;
+  $('#grid').querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => openCategory(b.dataset.cat));
+  $('#add-cat').onclick = () => openCategoryEdit(null);
+}
+
+/* ---------- onboarding hint ---------- */
+// Per device, not part of the data copy. Counts distinct days the app was opened; ends after the first drag or on day 4.
+const ONB_KEY = 'budget-onboarding';
+let onbShow = false;
+function onbInit() {
+  let o = null;
+  try { o = JSON.parse(localStorage.getItem(ONB_KEY)); } catch (_) {}
+  if (!o || !Array.isArray(o.days)) o = { days: [], done: false };
+  if (!o.done && !o.days.includes(today())) o.days.push(today());
+  if (o.days.length > 3) o.done = true;
+  try { localStorage.setItem(ONB_KEY, JSON.stringify(o)); } catch (_) {}
+  onbShow = !o.done;
+}
+function onbDone() {
+  if (!onbShow) return;
+  onbShow = false;
+  try { localStorage.setItem(ONB_KEY, JSON.stringify({ days: [], done: true })); } catch (_) {}
+  const el = $('#onb'); if (!el) return;
+  if (reduceMotion()) { el.remove(); return; }
+  el.classList.add('gone'); setTimeout(() => el.remove(), 320);
+}
+
+/* ---------- drag from budget ---------- */
+let suppressClick = false;
+function setupDrag(src) {
+  let start = null, dragging = false, ghost = null, overEl = null, timer = null;
+  const begin = (x, y) => {
+    if (dragging) return;
+    dragging = true; clearTimeout(timer);
+    src.classList.add('lifted'); document.body.classList.add('dragging');
+    ghost = document.createElement('div'); ghost.className = 'ghost'; ghost.textContent = '₽';
+    document.body.appendChild(ghost); move(x, y);
+  };
+  const move = (x, y) => {
+    ghost.style.transform = `translate(${x}px, ${y}px)`;
+    const el = document.elementFromPoint(x, y);
+    const target = el && el.closest('.cat[data-cat]');
+    if (target !== overEl) { overEl && overEl.classList.remove('drop'); overEl = target; overEl && overEl.classList.add('drop'); }
+  };
+  const finish = () => {
+    clearTimeout(timer);
+    const id = overEl && overEl.dataset.cat;
+    overEl && overEl.classList.remove('drop');
+    ghost && ghost.remove();
+    src.classList.remove('lifted'); document.body.classList.remove('dragging');
+    const wasDragging = dragging;
+    start = null; dragging = false; ghost = null; overEl = null;
+    return { wasDragging, id };
+  };
+  src.addEventListener('contextmenu', (e) => e.preventDefault());
+  src.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    start = { x: e.clientX, y: e.clientY };
+    try { src.setPointerCapture(e.pointerId); } catch (_) {}
+    timer = setTimeout(() => start && begin(start.x, start.y), 250);
+  });
+  src.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    if (!dragging && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) begin(e.clientX, e.clientY);
+    if (dragging) move(e.clientX, e.clientY);
+  });
+  src.addEventListener('pointerup', () => {
+    if (!start) return;
+    const { wasDragging, id } = finish();
+    if (wasDragging) { suppressClick = true; setTimeout(() => (suppressClick = false), 400); if (id) { onbDone(); openTx({ catId: id }); } }
+  });
+  src.addEventListener('pointercancel', finish);
+  src.addEventListener('click', () => { if (suppressClick) { suppressClick = false; return; } openTx({}); });
+}
+
+/* ---------- sheets ---------- */
+let sheetEl = null, backdropEl = null;
+let closeTagMenu = null, pageEl = null;
+function openSheet(html, cls = '') {
+  closeSheet(true);
+  backdropEl = document.createElement('div'); backdropEl.className = 'backdrop';
+  sheetEl = document.createElement('div'); sheetEl.className = 'sheet ' + cls; sheetEl.setAttribute('role', 'dialog'); sheetEl.setAttribute('aria-modal', 'true');
+  sheetEl.innerHTML = `<div class="grab-zone"><div class="grab"></div></div>${html}`;
+  backdropEl.onclick = () => closeSheet();
+  document.body.append(backdropEl, sheetEl);
+  enableSwipeClose(sheetEl);
+  // start from a committed off-screen frame, so the first frames of the slide are never skipped
+  void sheetEl.offsetHeight;
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (!backdropEl || !sheetEl) return; backdropEl.classList.add('on'); sheetEl.classList.add('on'); }));
+  sheetEl.querySelectorAll('[data-close]').forEach((b) => b.onclick = () => closeSheet());
+  return sheetEl;
+}
+function closeSheet(instant) {
+  if (closeTagMenu) closeTagMenu();
+  if (sheetEl && sheetEl._cleanup) sheetEl._cleanup();
+  const s = sheetEl, b = backdropEl;
+  sheetEl = backdropEl = null;
+  if (!s) return;
+  if (instant) { s.remove(); b.remove(); return; }
+  s.style.transition = ''; s.style.transform = '';
+  s.classList.remove('on'); b.classList.remove('on');
+  setTimeout(() => { s.remove(); b.remove(); }, 360);
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const cf = document.querySelector('.confirm');
+  if (cf) cf.remove();
+  else if (pageEl) pageEl._close();
+  else if (closeTagMenu) closeTagMenu();
+  else if (sheetEl) closeSheet();
+});
+// Pull the sheet down by its handle or header to close it.
+function enableSwipeClose(sh) {
+  let y0 = null, dy = 0, t0 = 0;
+  sh.addEventListener('pointerdown', (e) => {
+    const zone = e.target.closest('.grab-zone, .sheet-head');
+    if (!zone || (e.target.closest('button, input') && !e.target.closest('.grab-zone'))) return;
+    y0 = e.clientY; dy = 0; t0 = Date.now();
+    sh.style.transition = 'none';
+    try { sh.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  sh.addEventListener('pointermove', (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.clientY - y0);
+    sh.style.transform = `translateY(${dy}px)`;
+  });
+  const end = () => {
+    if (y0 == null) return;
+    y0 = null; sh.style.transition = '';
+    const v = dy / Math.max(1, Date.now() - t0);
+    if (dy > 90 || (dy > 30 && v > 0.5)) { if (sh === sheetEl) closeSheet(); }
+    else sh.style.transform = '';
+  };
+  sh.addEventListener('pointerup', end);
+  sh.addEventListener('pointercancel', end);
+}
+const closeBtn = '';
+
+/* --- add / edit expense --- */
+const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const parseDS = (ds) => { const [Y, M, D] = ds.split('-').map(Number); return new Date(Y, M - 1, D); };
+const shortDate = (ds) => { const d = parseDS(ds); return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${WD[d.getDay()]}`; };
+function dateLabel(ds) {
+  if (ds === today()) return 'Сегодня';
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (ds === dateStr(y)) return 'Вчера';
+  return shortDate(ds);
+}
+// Dates for the wheel: 5 last days of the previous month, then the month up to today (or its last day).
+function wheelDates(ds) {
+  const ym = ymOf(ds), [Y, M] = ymParts(ym);
+  const lastDay = ym === ymOf(today()) ? new Date().getDate() : daysIn(ym);
+  const out = [];
+  for (let d = new Date(Y, M - 1, -4); ; d.setDate(d.getDate() + 1)) {
+    out.push(dateStr(d));
+    if (d.getMonth() === M - 1 && d.getDate() >= lastDay) break;
+  }
+  if (!out.includes(ds)) out.push(ds);
+  return out;
+}
+const fmtAmountStr = (str) => {
+  const [i, f] = str.split(',');
+  const int = (i || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return f === undefined ? int : int + ',' + f;
+};
+// Spread categories over up to 3 rows, keeping their order and evening out the row widths.
+function chipRows(cats) {
+  const n = cats.length <= 4 ? 1 : cats.length <= 8 ? 2 : 3;
+  const rows = Array.from({ length: n }, () => ({ w: 0, items: [] }));
+  for (const c of cats) {
+    const r = rows.reduce((a, b) => (b.w < a.w ? b : a));
+    r.items.push(c); r.w += c.name.length * 8.5 + 38;
+  }
+  return rows.map((r) => r.items);
+}
+function openTx({ id = null, catId = null, back = null }) {
+  const t = id ? S.tx.find((x) => x.id === id) : null;
+  const isEdit = !!t;
+  let cat = t ? t.cat : catId;
+  const cur = ymOf(today());
+  const defDate = view === cur ? today() : `${view}-${pad(daysIn(view))}`;
+  const cats = visibleCats(view).concat(t && !visibleCats(view).some((c) => c.id === t.cat) ? [catById(t.cat)].filter(Boolean) : []);
+  let amt = t ? String(t.amount).replace('.', ',') : '';
+  let date = t ? t.date : defDate;
+  const days = wheelDates(date);
+
+  const keypad = ['1', '2', '3', 'ok', '4', '5', '6', '0', '7', '8', '9', 'del']
+    .map((k) => k === 'del' ? `<button class="f" data-k="del" aria-label="Стереть">${icon('backspace')}</button>`
+      : k === 'ok' ? `<button class="ok" data-k="ok" id="tx-save" disabled aria-label="${isEdit ? 'Сохранить' : 'Записать трату'}">${icon('check')}</button>`
+      : `<button data-k="${k}">${k}</button>`).join('');
+  const s = openSheet(`
+    <div class="sheet-head"><h2 id="tx-title"></h2>${isEdit ? `<button class="icon-btn del" id="tx-del" aria-label="Удалить трату">${icon('trash')}</button>` : ''}</div>
+    <div class="amt-row">
+      <div class="amt" id="tx-amt-box" aria-label="Сумма" role="textbox" aria-readonly="true"><b class="num" id="tx-amt"></b><span class="cur">₽</span></div>
+      <div class="datechip" id="tx-date" tabindex="0" role="spinbutton" aria-label="Дата. Потяните вниз, чтобы выбрать более раннюю"></div>
+    </div>
+    <div class="cmt-row">
+      <input class="input" id="tx-comment" placeholder="Комментарий" autocomplete="off" enterkeyhint="done" value="${esc(t ? t.comment : '')}">
+      <button class="tagbtn" id="tx-tagbtn" aria-haspopup="true" aria-expanded="false"></button>
+    </div>
+    <div class="tray">
+    <div class="chips" id="tx-cats"><div class="chips-in">${chipRows(cats).map((row) => `<div class="chips-row">${row.map((c) => `<button class="chip" data-c="${c.id}" aria-pressed="${c.id === cat}">${esc(c.name)}</button>`).join('')}</div>`).join('')}</div></div>
+    <div class="pad-area">
+      <div class="keypad" id="tx-keys">${keypad}</div>
+    </div>
+    </div>`, 'txs');
+
+  const amtEl = $('#tx-amt', s), commentEl = $('#tx-comment', s), saveBtn = $('#tx-save', s);
+  const keysEl = $('#tx-keys', s);
+  const amountValue = () => Math.round(parseFloat((amt || '0').replace(',', '.')) * 100) / 100;
+  const paint = () => {
+    amtEl.classList.toggle('blank', !amt);
+    amtEl.innerHTML = (amt ? fmtAmountStr(amt) : '0') + '<i class="caret"></i>';
+    const c = cat && catById(cat);
+    $('#tx-title', s).innerHTML = (isEdit ? 'Изменить расход' : 'Потрачено') +
+      (c ? `<span class="arrow">${icon('arrow-right')}</span><span class="tname">${esc(c.name)}</span>` : '');
+    saveBtn.disabled = !(amountValue() > 0 && cat);
+  };
+  const press = (k) => {
+    if (k === 'del') amt = amt.slice(0, -1);
+    else if (k === ',') { if (!amt.includes(',')) amt = (amt || '0') + ','; }
+    else {
+      const [i, f] = amt.split(',');
+      if (f !== undefined) { if (f.length < 2) amt += k; }
+      else if (amt === '0') amt = k;
+      else if (i.length < 7) amt += k;
+    }
+    paint();
+  };
+  paint();
+
+  // keypad: pointerdown for instant response; holding ⌫ clears the amount
+  let holdTimer = null;
+  keysEl.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    e.preventDefault();
+    if (document.activeElement === commentEl) commentEl.blur();
+    if (b.dataset.k === 'ok') { if (!b.disabled && !done) commit(); return; }
+    press(b.dataset.k);
+    if (b.dataset.k === 'del') holdTimer = setTimeout(() => { amt = ''; paint(); }, 550);
+  });
+  const stopHold = () => clearTimeout(holdTimer);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => keysEl.addEventListener(ev, stopHold));
+
+  // ---------- date wheel ----------
+  // pos is a fractional row index; rows sit on a cylinder of radius R, the nearest row is the date.
+  // The chip shows the date; touching it pops a 5-row wheel that closes shortly after it settles.
+  const dateEl = $('#tx-date', s), N = days.length;
+  let pos = days.indexOf(date), goal = pos, raf = null, closeTimer = null, pop = null, rows = [], geo = null;
+  const GEO = { rh: 34, R: 80, max: 1.45 };
+  const wheelHtml = () => `<div class="wheel">${days.map((d) => `<div class="wrow">${dateLabel(d)}</div>`).join('')}</div>`;
+  const paintWheel = () => {
+    if (!geo) return;
+    const near = Math.round(pos);
+    rows.forEach((r, i) => {
+      const a = (i - pos) * geo.rh / geo.R;
+      if (Math.abs(a) > geo.max) { r.style.visibility = 'hidden'; return; }
+      r.style.visibility = '';
+      r.style.transform = `translateY(${(geo.R * Math.sin(a)).toFixed(2)}px) rotateX(${(-a).toFixed(3)}rad)`;
+      r.style.opacity = (Math.pow(Math.cos(a), 1.3) * (i === near ? 1 : .85)).toFixed(3);
+      r.classList.toggle('sel', i === near);
+    });
+  };
+  const paintLabel = () => { const l = $('.dlabel span', dateEl); if (l) l.textContent = dateLabel(date); dateEl.setAttribute('aria-valuetext', dateLabel(date)); };
+  const setPos = (p) => {
+    pos = p; paintWheel();
+    const d = days[Math.max(0, Math.min(N - 1, Math.round(p)))];
+    if (d !== date) { date = d; paintLabel(); }
+  };
+  const animateTo = (target, ms, after) => {
+    cancelAnimationFrame(raf);
+    const p0 = pos, t0 = performance.now();
+    if (reduceMotion() || p0 === target) { setPos(target); raf = null; if (after) after(); return; }
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / ms);
+      setPos(p0 + (target - p0) * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) raf = requestAnimationFrame(step); else { raf = null; if (after) after(); }
+    };
+    raf = requestAnimationFrame(step);
+  };
+  const clampIdx = (p) => Math.max(0, Math.min(N - 1, Math.round(p)));
+  const rubber = (p) => (p < 0 ? p * .3 : p > N - 1 ? N - 1 + (p - N + 1) * .3 : p);
+
+  function openPop() {
+    clearTimeout(closeTimer);
+    if (pop) { pop.classList.remove('out'); return; }
+    pop = document.createElement('div'); pop.className = 'wheelpop';
+    pop.innerHTML = wheelHtml();
+    document.body.appendChild(pop);
+    const r = dateEl.getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(r.left + r.width / 2 - 86, innerWidth - 180)) + 'px';
+    pop.style.top = (r.top + r.height / 2 - 89) + 'px';
+    rows = [...pop.querySelectorAll('.wrow')]; geo = GEO;
+    dateEl.classList.add('open');
+    paintWheel();
+    bindDrag(pop, (e) => {
+      const r2 = pop.getBoundingClientRect();
+      const off = Math.round((e.clientY - (r2.top + r2.height / 2)) / geo.rh);
+      animateTo(clampIdx(pos + off), 260, () => schedClose(260));
+    });
+    document.addEventListener('pointerdown', popOutside, true);
+  }
+  function closePop(now) {
+    clearTimeout(closeTimer);
+    if (!pop) return;
+    const p = pop; pop = null; rows = []; geo = null;
+    document.removeEventListener('pointerdown', popOutside, true);
+    dateEl.classList.remove('open');
+    if (now || reduceMotion()) p.remove(); else { p.classList.add('out'); setTimeout(() => p.remove(), 150); }
+  }
+  const schedClose = (ms) => { clearTimeout(closeTimer); closeTimer = setTimeout(() => closePop(), ms); };
+  const popOutside = (e) => { if (pop && !pop.contains(e.target) && !dateEl.contains(e.target)) { cancelAnimationFrame(raf); setPos(clampIdx(pos)); closePop(); } };
+
+  // drag with inertia; onTap gets a pointerup that did not move
+  function bindDrag(el, onTap) {
+    let y0 = null, p0 = 0, moved = false, samples = [];
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button) return;
+      e.preventDefault();
+      if (document.activeElement === commentEl) commentEl.blur();
+      cancelAnimationFrame(raf); clearTimeout(closeTimer);
+      openPop();
+      y0 = e.clientY; p0 = pos; moved = false; samples = [{ y: e.clientY, t: e.timeStamp }];
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (y0 == null || !geo) return;
+      const dy = e.clientY - y0;
+      if (Math.abs(dy) > 5) moved = true;
+      if (!moved) return;
+      samples.push({ y: e.clientY, t: e.timeStamp });
+      if (samples.length > 6) samples.shift();
+      setPos(rubber(p0 - dy / geo.rh));
+    });
+    const end = (e) => {
+      if (y0 == null) return;
+      y0 = null;
+      if (!geo) return;
+      if (!moved) { if (e.type === 'pointerup') onTap(e); return; }
+      const a = samples[0], b = samples[samples.length - 1], dt = Math.max(16, b.t - a.t);
+      const v = b.t - a.t > 0 && e.timeStamp - b.t < 80 ? -(b.y - a.y) / dt / geo.rh : 0; // rows per ms
+      const target = clampIdx(pos + v * 260);
+      animateTo(target, Math.min(800, 220 + Math.abs(target - pos) * 55), () => schedClose(450));
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+
+  dateEl.innerHTML = `<div class="dlabel"><span></span>${icon('chevrons-up-down')}</div>`;
+  paintLabel();
+  bindDrag(dateEl, () => {}); // a plain tap leaves the popped wheel open
+  dateEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    goal = clampIdx((raf ? goal : Math.round(pos)) + (e.key === 'ArrowUp' ? -1 : 1)); // fast presses add up
+    animateTo(goal, 180);
+  });
+  s._cleanup = () => closePop(true);
+
+  // ---------- tags: button + menu ----------
+  let tags = (t && Array.isArray(t.tags) ? t.tags : []).filter((id) => tagById(id));
+  let menu = null;
+  const tagBtn = $('#tx-tagbtn', s);
+  const orderedSel = () => S.tags.filter((g) => tags.includes(g.id));
+  const paintTagBtn = () => {
+    const sel = orderedSel();
+    tagBtn.classList.toggle('on', sel.length > 0);
+    tagBtn.setAttribute('aria-label', sel.length ? 'Теги: ' + sel.map((g) => g.name).join(', ') : 'Выбрать тег');
+    tagBtn.innerHTML = sel.length
+      ? `${icon('tag', 'tb-ico')}<span class="tb-name">${esc(sel[0].name)}</span>${sel.length > 1 ? `<span class="tb-more">+${sel.length - 1}</span>` : ''}${icon('chevron-down', 'tb-arrow')}`
+      : `${icon('tag', 'tb-ico')}<span class="tb-name">Тег</span>${icon('chevron-down', 'tb-arrow')}`;
+  };
+  paintTagBtn();
+  const placeMenu = () => {
+    if (!menu) return;
+    const r = tagBtn.getBoundingClientRect(), vv = window.visualViewport;
+    const vTop = vv ? vv.offsetTop : 0, vBot = vv ? vv.offsetTop + vv.height : innerHeight;
+    menu.style.left = Math.max(8, Math.min(r.right - 200, innerWidth - 208)) + 'px';
+    const below = vBot - r.bottom - 14, above = r.top - vTop - 14;
+    if (below >= 220 || below >= above) { menu.style.top = (r.bottom + 6) + 'px'; menu.style.bottom = 'auto'; menu.style.maxHeight = below + 'px'; }
+    else { menu.style.top = 'auto'; menu.style.bottom = (innerHeight - r.top + 6) + 'px'; menu.style.maxHeight = above + 'px'; }
+  };
+  let multi = false; // "Выбрать несколько": taps toggle tags and keep the menu open
+  const renderFoot = () => {
+    const foot = $('.tfoot', menu);
+    foot.innerHTML = !S.tags.length
+      ? `<button class="tmi tnew" id="tm-add">${icon('plus')}Добавить тег</button>`
+      : (multi ? `<button class="tmi tnew" id="tm-done">${icon('check')}Готово</button>`
+        : S.tags.length >= 2 ? `<button class="tmi tmulti" id="tm-multi">${icon('list-checks')}Выбрать несколько</button>` : '')
+        + `<button class="tmi tcfg" id="tm-cfg">${icon('sliders')}Настроить</button>`;
+    const back = () => { tags = tags.filter((id) => tagById(id)); paintTagBtn(); if (sheetEl === s) openMenu(); };
+    const ad = $('#tm-add', menu); if (ad) ad.onclick = () => { closeMenu(); openTagsPage({ add: true, onBack: back }); };
+    const cf = $('#tm-cfg', menu); if (cf) cf.onclick = () => { closeMenu(); openTagsPage({ onBack: back }); };
+    const mu = $('#tm-multi', menu); if (mu) mu.onclick = () => { multi = true; renderMenu(); placeMenu(); };
+    const dn = $('#tm-done', menu); if (dn) dn.onclick = () => closeMenu();
+  };
+  const renderMenu = () => {
+    const keep = $('.tlist', menu) ? $('.tlist', menu).scrollTop : 0;
+    menu.innerHTML = (S.tags.length
+      ? `<div class="tlist" role="listbox" aria-multiselectable="true" aria-label="Теги">${S.tags.map((g) => `<button class="trow" role="option" data-tag="${g.id}" aria-selected="${tags.includes(g.id)}"><span>${esc(g.name)}</span>${tags.includes(g.id) ? icon('check') : ''}</button>`).join('')}</div>`
+      : `<div class="tempty"><b>Тегов пока нет</b><span>Помогут сгруппировать траты внутри категорий</span></div>`)
+      + `<div class="tfoot"></div>`;
+    renderFoot();
+    if ($('.tlist', menu)) $('.tlist', menu).scrollTop = keep;
+  };
+  const outside = (e) => { if (menu && !menu.contains(e.target) && !tagBtn.contains(e.target)) closeMenu(); };
+  function openMenu() {
+    if (menu) return;
+    menu = document.createElement('div'); menu.className = 'tmenu';
+    document.body.appendChild(menu);
+    menu.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-tag]'); if (!b) return;
+      const id = b.dataset.tag, on = !tags.includes(id);
+      tags = on ? tags.concat(id) : tags.filter((x) => x !== id);
+      b.setAttribute('aria-selected', on); b.innerHTML = `<span>${esc(tagById(id).name)}</span>${on ? icon('check') : ''}`;
+      paintTagBtn();
+      if (!multi) { setTimeout(closeMenu, reduceMotion() ? 0 : 160); return; } // let the check mark show for a moment
+      placeMenu();
+    });
+    renderMenu(); placeMenu();
+    tagBtn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
+    closeTagMenu = closeMenu;
+  }
+  function closeMenu() {
+    if (!menu) return;
+    menu.remove(); menu = null; multi = false;
+    tagBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    if (closeTagMenu === closeMenu) closeTagMenu = null;
+  }
+  tagBtn.onclick = () => (menu ? closeMenu() : openMenu());
+  s._placeMenu = placeMenu;
+
+  // physical keyboard (desktop)
+  const onKey = (e) => {
+    if (!s.isConnected) { document.removeEventListener('keydown', onKey); return; }
+    if (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === ',' || e.key === '.') press(',');
+    else if (e.key === 'Backspace') press('del');
+    else if (e.key === 'Enter' && !saveBtn.disabled) commit();
+    else return;
+    e.preventDefault();
+  };
+  document.addEventListener('keydown', onKey);
+
+  // comment: the iOS keyboard replaces our keypad while typing
+  // Comment: while typing only the top block stays and the iOS keyboard takes the tray's place.
+  // iOS scrolls the whole page up when a focused field would end up under the keyboard. To avoid that,
+  // a tap first lifts the sheet to the expected keyboard height, then focuses the field without scrolling.
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const startTyping = () => {
+    if (s.classList.contains('typing')) return;
+    closePop(true); if (menu) closeMenu();
+    s._h0 = s.offsetHeight; // keep this height while typing if the field still clears the keyboard
+    flipSheet(s, () => {
+      s.classList.add('typing'); s.scrollTop = 0;
+      if (coarse) seatOnKeyboard(s, kbGuess());
+    });
+    // no keyboard came up (hardware keyboard): put the content back down
+    setTimeout(() => { if (s.classList.contains('typing') && !kbNow()) flipSheet(s, () => seatOnKeyboard(s, 0)); }, 900);
+  };
+  let tap0 = null;
+  commentEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; tap0 = { x: t.clientX, y: t.clientY }; }, { passive: true });
+  commentEl.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (document.activeElement === commentEl || !tap0 || Math.hypot(t.clientX - tap0.x, t.clientY - tap0.y) > 10) return;
+    e.preventDefault(); // no native focus, so no page scroll
+    startTyping();
+    commentEl.readOnly = false;
+    commentEl.focus({ preventScroll: true });
+  });
+  // on touch screens the field stays read-only until our tap handler opens it, so iOS never focuses it on its own
+  if (coarse) commentEl.readOnly = true;
+  commentEl.addEventListener('focus', () => { if (commentEl.readOnly) { commentEl.blur(); return; } startTyping(); });
+  commentEl.addEventListener('blur', () => {
+    flipSheet(s, () => { s.classList.remove('typing'); seatOnKeyboard(s, 0); fitTray(s); }); // the keyboard height may be known now
+    if (coarse) commentEl.readOnly = true;
+    if (window.scrollY) window.scrollTo(0, 0);
+  });
+  commentEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commentEl.blur(); } });
+
+  let done = false;
+  const commit = () => {
+    const amount = amountValue();
+    if (done || !(amount > 0) || !cat) return false;
+    done = true;
+    const before = snapshot();
+    const comment = commentEl.value.trim();
+    const tagIds = orderedSel().map((g) => g.id);
+    if (isEdit) Object.assign(t, { amount, date, comment, cat, tags: tagIds, demo: false });
+    else S.tx.push({ id: uid(), cat, amount, date, comment, tags: tagIds });
+    save(); // data is written at once; the screen catches up after the sheet has gone
+    saveBtn.classList.remove('pop'); void saveBtn.offsetWidth; saveBtn.classList.add('pop');
+    setTimeout(() => closeSheet(), reduceMotion() ? 0 : 170);
+    afterSave(before, cat, amount, date);
+    return true;
+  };
+  $('#tx-cats', s).onclick = (e) => {
+    const b = e.target.closest('[data-c]'); if (!b) return;
+    cat = b.dataset.c;
+    s.querySelectorAll('#tx-cats [data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    paint();
+    revealChip(b, true);
+  };
+  // scroll the chip row just enough that the chosen chip is fully visible, with a margin
+  function revealChip(el, smooth) {
+    const box = $('#tx-cats', s), m = 16;
+    const l = el.offsetLeft, r = l + el.offsetWidth;
+    let x = box.scrollLeft;
+    if (l - m < x) x = l - m;
+    else if (r + m > x + box.clientWidth) x = r + m - box.clientWidth;
+    x = Math.max(0, x);
+    if (x !== box.scrollLeft) box.scrollTo({ left: x, behavior: smooth ? 'smooth' : 'auto' });
+  }
+  const pre = cat && s.querySelector(`#tx-cats [data-c="${cat}"]`);
+  if (pre) requestAnimationFrame(() => revealChip(pre, false));
+  fitTray(s);
+  const del = $('#tx-del', s);
+  if (del) del.onclick = () => {
+    if (!del.classList.contains('armed')) { del.classList.add('armed'); toast('Нажмите ещё раз, чтобы удалить'); return; }
+    S.tx = S.tx.filter((x) => x.id !== t.id); save(); render(); closeSheet(); toast('Трата удалена');
+    if (back) setTimeout(back, 260);
+  };
+}
+
+/* --- what happens on the main screen after an expense is saved --- */
+const reduceMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+let anims = [];
+function stopAnims() { anims.forEach((f) => f()); anims = []; }
+function later(fn, ms) { const id = setTimeout(fn, ms); anims.push(() => clearTimeout(id)); }
+function snapshot() {
+  const spentBy = {}; let total = 0;
+  for (const t of txIn(view)) { spentBy[t.cat] = (spentBy[t.cat] || 0) + t.amount; total += t.amount; }
+  return { spentBy, total };
+}
+function dateWords(ds) {
+  if (ds === today()) return 'сегодня';
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (ds === dateStr(y)) return 'вчера';
+  const d = parseDS(ds);
+  const opts = { day: 'numeric', month: 'long' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString('ru-RU', opts).replace(/\s?г\.?$/, '');
+}
+function countUp(els, from, to, fmt, ms = 520) {
+  const t0 = performance.now(); let raf;
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+    const v = from + (to - from) * e;
+    els.forEach((el) => { el.textContent = fmt(k === 1 ? to : Math.round(v)); });
+    if (k < 1) raf = requestAnimationFrame(step);
+  };
+  els.forEach((el) => { el.textContent = fmt(from); });
+  raf = requestAnimationFrame(step);
+  anims.push(() => cancelAnimationFrame(raf));
+}
+const barWidth = (spent, limit) => (limit == null || !(spent > 0) ? 0 : Math.max(Math.min(100, spent / limit * 100), 3));
+function tileHidden(tile) {
+  const g = $('#grid').getBoundingClientRect(), r = tile.getBoundingClientRect();
+  const visible = Math.min(r.bottom, g.bottom) - Math.max(r.top, g.top);
+  return visible < r.height / 2;
+}
+let saveTimers = [];
+function afterSave(before, catId, amount, date) {
+  saveTimers.forEach(clearTimeout); saveTimers = [];
+  const RM = reduceMotion();
+  const msg = `${rub(amount)} → ${catById(catId).name}, ${dateWords(date)}`;
+  const inView = ymOf(date) === view;
+  const T = (fn, ms) => saveTimers.push(setTimeout(fn, ms));
+  // toast only when the change itself will not be visible on screen
+  T(() => {
+    const tile = $(`#grid [data-cat="${catId}"]`);
+    if (!inView || !tile || tileHidden(tile)) toast(msg);
+  }, RM ? 200 : 375);
+  T(() => { render(); if (inView) animateChange(before, catId, RM); }, RM ? 200 : 510);
+}
+function animateChange(before, catId, RM) {
+  const after = snapshot();
+  const tile = $(`#grid [data-cat="${catId}"]`);
+  if (tile) {
+    // background flash (kept even with reduced motion): green, or red when the category ends up over its limit
+    const lim = limitAt(catById(catId).limits, view);
+    const spentNow = txIn(view).reduce((a, t) => a + (t.cat === catId ? t.amount : 0), 0);
+    const [bgF, rgb] = lim != null && spentNow > lim ? ['#FBE1DD', '210,56,42'] : ['#DDF0E4', '47,138,87'];
+    const a1 = tile.animate([
+      { backgroundColor: '#FFFFFF', boxShadow: `0 0 0 0 rgba(${rgb},0)` },
+      { backgroundColor: bgF, boxShadow: `0 0 0 2px rgba(${rgb},.45)`, offset: 0.25 },
+      { backgroundColor: '#FFFFFF', boxShadow: `0 0 0 0 rgba(${rgb},0)` }], { duration: 1100, easing: 'ease-out' });
+    anims.push(() => a1.cancel());
+    if (!RM) {
+      const a2 = tile.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 460, easing: 'cubic-bezier(.3,.7,.4,1)' });
+      anims.push(() => a2.cancel());
+      const c = catById(catId), lim = limitAt(c.limits, view);
+      const was = before.spentBy[catId] || 0, now = after.spentBy[catId] || 0;
+      countUp([tile.querySelector('.cat-spent')], was, now, rub);
+      const bi = tile.querySelector('.pb i');
+      if (bi) {
+        const fin = bi.style.width;
+        bi.style.transition = 'none'; bi.style.width = barWidth(was, lim) + '%'; void bi.offsetWidth;
+        bi.style.transition = 'width .65s cubic-bezier(.3,.7,.3,1)'; bi.style.width = fin;
+      }
+      // crossing the limit: red and "+N ₽" appear when the count-up ends
+      if (lim != null && now > lim && !(was > lim)) {
+        const sub = tile.querySelector('.cat-limit'), finSub = sub.textContent, finCol = tile.style.getPropertyValue('--c');
+        const prevCol = STATE_COLOR[catState(c, was, lim, view)];
+        tile.classList.remove('over'); sub.textContent = `/ ${rub(lim)}`;
+        tile.style.setProperty('--c', prevCol); if (bi) bi.style.background = prevCol;
+        later(() => { tile.classList.add('over'); sub.textContent = finSub; tile.style.setProperty('--c', finCol); if (bi) bi.style.background = finCol; }, 520);
+      }
+    }
+  }
+  if (RM) return;
+  // budget card: count "left" down and lower the level, when the card stays in the same state
+  const budget = limitAt(S.budget, view);
+  const bigs = [...document.querySelectorAll('#budget .big')];
+  if (budget == null) countUp(bigs, before.total, after.total, rub);
+  else {
+    const was = budget - before.total, now = budget - after.total;
+    if (was >= 0 && now >= 0) {
+      countUp(bigs, was, now, rub);
+      const w = $('#budget .water');
+      if (w) {
+        const a3 = w.animate([{ height: `${(was / budget * 100).toFixed(2)}%` }, { height: w.style.height }], { duration: 520, easing: 'cubic-bezier(.3,.7,.3,1)' });
+        anims.push(() => a3.cancel());
+      }
+    }
+  }
+}
+
+/* --- category: list of expenses --- */
+function openCategory(id) {
+  const c = catById(id); if (!c) return;
+  const txs = txIn(view).filter((t) => t.cat === id).sort((a, b) => b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1));
+  const spent = txs.reduce((a, t) => a + t.amount, 0);
+  const limit = limitAt(c.limits, view);
+  let list = '', lastDay = '';
+  for (const t of txs) {
+    if (t.date !== lastDay) {
+      lastDay = t.date;
+      const [y, m, d] = t.date.split('-').map(Number);
+      list += `<div class="day">${new Date(y, m - 1, d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })}</div>`;
+    }
+    list += `<button class="tx" data-t="${t.id}"><span class="c">${esc(t.comment || '')}</span><span class="a num">${rub(t.amount)}</span></button>`;
+  }
+  const summary = limit == null
+    ? `<span>Потрачено <b class="num">${rub(spent)}</b></span>`
+    : `<span>Потрачено <b class="num">${rub(spent)}</b> из <b class="num">${rub(limit)}</b></span>` +
+      (spent > limit ? `<span class="over num">перерасход ${rub(spent - limit)}</span>` : `<span class="num">осталось ${rub(limit - spent)}</span>`);
+  const s = openSheet(`
+    <div class="sheet-head">${disc({ iconName: c.icon, color: NEUTRAL })}<h2>${esc(c.name)}</h2>
+      <button class="icon-btn" id="cat-edit" aria-label="Настроить категорию">${icon('pencil')}</button>${closeBtn}</div>
+    <div class="summary">${summary}</div>
+    <button class="btn primary" id="cat-add">${icon('plus')} Добавить трату</button>
+    <div class="list">${list || `<div class="empty">В ${esc(monthIn(view))} трат нет</div>`}</div>`);
+  const back = () => openCategory(id);
+  $('#cat-add', s).onclick = () => openTx({ catId: id, back });
+  $('#cat-edit', s).onclick = () => openCategoryEdit(id);
+  s.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => openTx({ id: b.dataset.t, back }));
+}
+
+/* --- category: create / edit --- */
+function openCategoryEdit(id) {
+  const c = id ? catById(id) : null;
+  let ic = c ? c.icon : 'dots';
+  const limit = c ? limitAt(c.limits, view) : null;
+  const count = c ? S.tx.filter((t) => t.cat === c.id).length : 0;
+  const s = openSheet(`
+    <div class="sheet-head"><h2>${c ? 'Настройка категории' : 'Новая категория'}</h2>${closeBtn}</div>
+    <label class="field"><span>Название</span><input class="input" id="ce-name" maxlength="24" value="${esc(c ? c.name : '')}" placeholder="Например, Кафе"></label>
+    <label class="field"><span>Лимит на месяц, ₽ — действует с ${esc(monthIn(view))} и дальше</span><input class="input num" id="ce-limit" inputmode="decimal" autocomplete="off" placeholder="Без лимита" value="${limit != null ? limit : ''}"></label>
+    <div class="field"><span>Как тратится</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="ce-type" value="even" ${!c || c.type !== 'oneoff' ? 'checked' : ''}>Равномерно</label>
+        <label><input type="radio" name="ce-type" value="oneoff" ${c && c.type === 'oneoff' ? 'checked' : ''}>Разовый платёж</label>
+      </div>
+      <span>Нужно для подсветки темпа: разовые платежи (ЖКУ, подписки) красятся только при превышении лимита.</span>
+    </div>
+    <div class="field"><span>Иконка</span><div class="icons" id="ce-icons" style="--c:var(--accent)">${CAT_ICONS.map((n) => `<button data-i="${n}" aria-pressed="${n === ic}" aria-label="${n}">${icon(n)}</button>`).join('')}</div></div>
+    <div class="actions">
+      <button class="btn primary" id="ce-save">${c ? 'Сохранить' : 'Создать категорию'}</button>
+      ${c ? `<button class="btn danger" id="ce-del">Удалить категорию</button>` : ''}
+    </div>`);
+  if (!c) $('#ce-name', s).focus();
+  bindGrouped($('#ce-limit', s));
+  $('#ce-icons', s).onclick = (e) => { const b = e.target.closest('[data-i]'); if (!b) return; ic = b.dataset.i; s.querySelectorAll('#ce-icons button').forEach((x) => x.setAttribute('aria-pressed', x === b)); };
+  $('#ce-save', s).onclick = () => {
+    const name = $('#ce-name', s).value.trim();
+    if (!name) { toast('Введите название'); $('#ce-name', s).focus(); return; }
+    const raw = $('#ce-limit', s).value.trim();
+    const lim = raw ? parseAmount(raw) : null;
+    if (raw && !(lim > 0)) { toast('Лимит должен быть числом больше нуля'); return; }
+    const type = s.querySelector('input[name=ce-type]:checked').value;
+    if (c) {
+      Object.assign(c, { name, icon: ic, type });
+      if (lim !== limit) setLimitFrom(c.limits, view, lim);
+    } else {
+      S.categories.push({ id: uid(), name, icon: ic, type, created: view, limits: { [view]: lim } });
+    }
+    save(); render(); closeSheet(); toast(c ? 'Категория сохранена' : 'Категория создана');
+  };
+  const del = $('#ce-del', s);
+  if (del) del.onclick = () => {
+    if (!del.classList.contains('armed')) {
+      del.classList.add('armed');
+      del.textContent = count ? `Удалить вместе с ${count} ${count % 10 === 1 && count % 100 !== 11 ? 'тратой' : 'тратами'}? Нажмите ещё раз` : 'Нажмите ещё раз, чтобы удалить';
+      return;
+    }
+    S.categories = S.categories.filter((x) => x.id !== c.id);
+    S.tx = S.tx.filter((t) => t.cat !== c.id);
+    save(); render(); closeSheet(); toast('Категория удалена');
+  };
+}
+
+/* --- tags --- */
+const tagById = (id) => S.tags.find((g) => g.id === id);
+const normTag = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+const tagKey = (v) => normTag(v).toLowerCase().replace(/ё/g, 'е');
+const tagCount = (id) => S.tx.filter((t) => Array.isArray(t.tags) && t.tags.includes(id)).length;
+const plural = (n, f) => { const a = n % 100, b = n % 10; return a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; };
+
+function openTagsPage({ onBack, add = false } = {}) {
+  if (pageEl) return;
+  const pg = document.createElement('div');
+  pg.className = 'page'; pg.setAttribute('role', 'dialog'); pg.setAttribute('aria-modal', 'true');
+  pg.innerHTML = `<div class="page-bar"><button class="icon-btn" id="tp-back" aria-label="Назад">${icon('left')}</button><h1 id="tp-title"></h1></div><div class="page-body" id="tp-body"></div>`;
+  document.body.appendChild(pg); pageEl = pg;
+  void pg.offsetWidth;
+  requestAnimationFrame(() => requestAnimationFrame(() => pg.classList.add('on')));
+  const body = $('#tp-body', pg);
+  let editing = null, adding = add && S.tags.length < 15, addDraft = '';
+  const close = () => {
+    if (pageEl !== pg) return;
+    pageEl = null; pg.classList.remove('on');
+    setTimeout(() => pg.remove(), reduceMotion() ? 0 : 340);
+    if (onBack) onBack();
+  };
+  pg._close = close;
+  $('#tp-back', pg).onclick = close;
+
+  const countText = (id) => { const n = tagCount(id); return n ? `${n} ${plural(n, ['трата', 'траты', 'трат'])}` : 'Не используется'; };
+  const rowHtml = (g) => editing === g.id
+    ? `<div class="trow2 editing" data-id="${g.id}"><div class="tedit"><input class="tinput" id="tp-edit" maxlength="14" autocomplete="off" enterkeyhint="done" value="${esc(g.name)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-edit-err"></span><span class="tcount" id="tp-edit-count"></span></div></div><button class="btn primary sm" id="tp-done">Готово</button></div>`
+    : `<div class="trow2" data-id="${g.id}"><button class="grip" aria-label="Перетащить «${esc(g.name)}». Стрелки вверх и вниз меняют порядок">${icon('grip')}</button><button class="tinfo" data-ren aria-label="Переименовать «${esc(g.name)}»"><span class="tname">${esc(g.name)}</span><span class="tcnt">${countText(g.id)}</span></button><button class="tact" data-ren aria-label="Переименовать">${icon('pencil')}</button><button class="tact del" data-del aria-label="Удалить «${esc(g.name)}»">${icon('trash')}</button></div>`;
+
+  function render(focusGripOf) {
+    const n = S.tags.length, atLimit = n >= 15;
+    $('#tp-title', pg).textContent = 'Теги';
+    body.innerHTML = `<p class="thint">Зажмите ≡ для изменения порядка тегов, в котором они будут отображаться при внесении расходов</p>`
+      + (n ? `<div class="tcard" id="tp-list">${S.tags.map(rowHtml).join('')}</div>` : `<div class="tcard empty-card">Тегов пока нет</div>`)
+      + (n && !atLimit ? `<p class="thint tcount-hint">${n} из 15 тегов</p>` : '')
+      + (adding
+        ? `<div class="tcard create"><input class="tinput" id="tp-new" maxlength="14" autocomplete="off" enterkeyhint="done" placeholder="Название тега" value="${esc(addDraft)}" aria-label="Название тега"><div class="tmeta"><span class="terr" id="tp-new-err"></span><span class="tcount" id="tp-new-count"></span></div><div class="row"><button class="btn soft sm" id="tp-cancel">Отмена</button><button class="btn primary sm" id="tp-add-ok" disabled>Добавить</button></div></div>`
+        : `<button class="tadd-btn" id="tp-add" ${atLimit ? 'disabled' : ''}>${icon('plus')} Добавить</button>${atLimit ? '<p class="thint">Можно создать до 15 тегов. Удалите ненужный, чтобы добавить новый</p>' : ''}`);
+    // rename
+    body.querySelectorAll('[data-ren]').forEach((b) => b.onclick = () => { if (editing || adding) return; editing = b.closest('.trow2').dataset.id; render(); const i = $('#tp-edit', pg); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
+    const ed = $('#tp-edit', pg);
+    if (ed) {
+      const g = tagById(editing);
+      const v = () => { const nm = normTag(ed.value); const dup = nm ? S.tags.find((o) => o.id !== g.id && tagKey(o.name) === tagKey(nm)) : null;
+        const c = $('#tp-edit-count', pg); c.textContent = `${ed.value.length}/14`; c.classList.toggle('max', ed.value.length >= 14);
+        ed.classList.toggle('err', !!dup); $('#tp-edit-err', pg).textContent = dup ? 'Такой тег уже есть' : '';
+        $('#tp-done', pg).disabled = !!dup; return { nm, dup }; };
+      const done = () => { const { nm, dup } = v(); if (dup) return; if (nm && nm !== g.name) { g.name = nm; save(); } editing = null; render(); };
+      ed.addEventListener('input', v); ed.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(); } });
+      $('#tp-done', pg).onclick = done; v();
+    }
+    // delete
+    body.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { if (editing) return; confirmDelete(tagById(b.closest('.trow2').dataset.id)); });
+    // add
+    const ab = $('#tp-add', pg);
+    if (ab) ab.onclick = () => { if (editing) return; adding = true; render(); $('#tp-new', pg).focus(); };
+    const ni = $('#tp-new', pg);
+    if (ni) {
+      const v = () => { const nm = normTag(ni.value); const dup = nm ? S.tags.find((o) => tagKey(o.name) === tagKey(nm)) : null;
+        const c = $('#tp-new-count', pg); c.textContent = `${ni.value.length}/14`; c.classList.toggle('max', ni.value.length >= 14);
+        ni.classList.toggle('err', !!dup); $('#tp-new-err', pg).textContent = dup ? 'Такой тег уже есть' : '';
+        const ok = !!nm && !dup && S.tags.length < 15; $('#tp-add-ok', pg).disabled = !ok; return { nm, ok }; };
+      const add = () => { const { nm, ok } = v(); if (!ok) return; S.tags.push({ id: uid(), name: nm }); save(); adding = false; addDraft = ''; render(); };
+      ni.addEventListener('input', () => { addDraft = ni.value; v(); });
+      ni.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+      $('#tp-add-ok', pg).onclick = add;
+      $('#tp-cancel', pg).onclick = () => { adding = false; addDraft = ''; render(); };
+      v();
+    }
+    // keyboard reordering
+    body.querySelectorAll('.grip').forEach((gb) => gb.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      const id = gb.closest('.trow2').dataset.id, i = S.tags.findIndex((g) => g.id === id), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+      if (j < 0 || j >= S.tags.length) return;
+      const [g] = S.tags.splice(i, 1); S.tags.splice(j, 0, g); save(); render(id);
+    }));
+    if (focusGripOf) { const r = body.querySelector(`.trow2[data-id="${focusGripOf}"] .grip`); if (r) r.focus(); }
+  }
+
+  // drag to reorder, with auto-scroll near the edges of the visible list
+  body.addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.grip'); if (!grip || editing || adding) return;
+    e.preventDefault();
+    const list = $('#tp-list', pg), rowEl = grip.closest('.trow2'), rows = [...list.children];
+    const from = rows.indexOf(rowEl), h = rowEl.offsetHeight;
+    const grabOff = e.clientY - rowEl.getBoundingClientRect().top;
+    let y = e.clientY, to = from, raf = 0;
+    rowEl.classList.add('dragging'); rows.forEach((r) => { if (r !== rowEl) r.classList.add('shift'); });
+    try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    const update = () => {
+      const lt = list.getBoundingClientRect().top;
+      const top = Math.max(0, Math.min((rows.length - 1) * h, y - lt - grabOff));
+      rowEl.style.transform = `translateY(${top - from * h}px) scale(1.03)`;
+      to = Math.round(top / h);
+      rows.forEach((r, i) => {
+        if (r === rowEl) return;
+        let d = 0;
+        if (from < to && i > from && i <= to) d = -h;
+        if (from > to && i >= to && i < from) d = h;
+        r.style.transform = d ? `translateY(${d}px)` : '';
+      });
+    };
+    const tick = () => {
+      const br = body.getBoundingClientRect(), zone = 60, max = h / 100 * 16;
+      let v = 0;
+      if (y < br.top + zone) v = -max * Math.min(1, (br.top + zone - y) / zone);
+      else if (y > br.bottom - zone) v = max * Math.min(1, (y - (br.bottom - zone)) / zone);
+      if (v) { const st = body.scrollTop; body.scrollTop += v; if (body.scrollTop !== st) update(); }
+      raf = requestAnimationFrame(tick);
+    };
+    const move = (ev) => { y = ev.clientY; update(); };
+    const up = () => {
+      cancelAnimationFrame(raf);
+      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up);
+      if (to !== from) { const [g] = S.tags.splice(from, 1); S.tags.splice(to, 0, g); save(); }
+      render();
+    };
+    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    update(); raf = requestAnimationFrame(tick);
+  });
+
+  function confirmDelete(g) {
+    const n = tagCount(g.id);
+    const ov = document.createElement('div'); ov.className = 'confirm'; ov.setAttribute('role', 'alertdialog');
+    ov.innerHTML = `<div class="cbg"></div><div class="csheet"><h3>Удалить тег «${esc(g.name)}»?</h3><p>${n ? `Тег снимется с ${n} ${plural(n, ['траты', 'трат', 'трат'])}. Сами траты останутся.` : 'Тег не используется ни в одной трате.'}</p><button class="btn cdel">Удалить</button><button class="btn soft ccancel">Отмена</button></div>`;
+    document.body.appendChild(ov);
+    const shut = () => ov.remove();
+    $('.cbg', ov).onclick = shut; $('.ccancel', ov).onclick = shut;
+    $('.cdel', ov).onclick = () => {
+      S.tags = S.tags.filter((x) => x.id !== g.id);
+      S.tx.forEach((t) => { if (Array.isArray(t.tags)) t.tags = t.tags.filter((x) => x !== g.id); });
+      save(); shut(); render(); toast('Тег удалён');
+    };
+  }
+  render();
+}
+
+/* --- money inputs: 150000 → 150 000 while typing --- */
+function bindGrouped(inp) {
+  const fmt = () => {
+    const pos = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+    const before = inp.value.slice(0, pos).replace(/[^\d,.]/g, '').length;
+    const raw = inp.value.replace(/\./g, ',').replace(/[^\d,]/g, '');
+    const [i, ...rest] = raw.split(',');
+    let out = (i || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    if (rest.length) out += ',' + rest.join('').slice(0, 2);
+    if (out === inp.value) return;
+    inp.value = out;
+    let n = 0, p = 0;
+    while (p < out.length && n < before) { if (/[\d,]/.test(out[p])) n++; p++; }
+    if (document.activeElement === inp) { try { inp.setSelectionRange(p, p); } catch (_) {} }
+  };
+  inp.addEventListener('input', fmt);
+  fmt();
+}
+
+/* --- settings --- */
+function openSettings() {
+  const budget = limitAt(S.budget, view);
+  const s = openSheet(`
+    <div class="sheet-head"><h2>Настройки</h2>${closeBtn}</div>
+    <label class="field"><span>Общий бюджет на месяц, ₽ — с ${esc(monthIn(view))} и дальше</span>
+      <input class="input num" id="st-budget" inputmode="decimal" autocomplete="off" placeholder="Не задан" value="${budget ?? ''}"></label>
+    <button class="btn soft" id="st-budget-save">Сохранить бюджет</button>
+    <hr>
+    <button class="setrow" id="st-tags"><span class="grow">Теги</span>${icon('right')}</button>
+    <hr>
+    <div class="field"><span>Карточка бюджета</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="st-card" value="dark" ${S.settings.card !== 'light' ? 'checked' : ''}>Тёмная</label>
+        <label><input type="radio" name="st-card" value="light" ${S.settings.card === 'light' ? 'checked' : ''}>Светлая</label>
+      </div>
+    </div>
+    <hr>
+    <label class="switch"><input type="checkbox" id="st-pace" ${S.settings.pace ? 'checked' : ''}>
+      <span><b>Подсвечивать темп трат</b><br><span class="sub">Сравниваем текущие расходы с остатком месяца. Первые дни месяца считаются как 12% лимита, чтобы одна покупка не окрашивала всё в красный. Если выключено, красным выделяется только перерасход.</span>
+      <span class="legend"><span><i class="dot" style="background:${STATE_COLOR.idle}"></i>нет трат</span><span><i class="dot" style="background:${STATE_COLOR.ok}"></i>в темпе</span><span><i class="dot" style="background:${STATE_COLOR.warn}"></i>чуть быстрее</span><span><i class="dot" style="background:${STATE_COLOR.over}"></i>заметно быстрее или перерасход</span></span></span>
+    </label>
+    <hr>
+    <div class="field"><span>Данные хранятся только на этом устройстве. Делайте копию раз в пару недель.</span></div>
+    <div class="actions">
+      <button class="btn soft" id="st-export">Сохранить копию данных</button>
+      <button class="btn soft" id="st-import">Загрузить копию</button>
+    </div>
+    <div id="st-out"></div>`);
+  bindGrouped($('#st-budget', s));
+  $('#st-tags', s).onclick = () => openTagsPage();
+  $('#st-budget-save', s).onclick = () => {
+    const raw = $('#st-budget', s).value.trim();
+    const v = raw ? parseAmount(raw) : null;
+    if (raw && !(v > 0)) { toast('Бюджет должен быть числом больше нуля'); return; }
+    setLimitFrom(S.budget, view, v); save(); render(); toast('Бюджет сохранён');
+  };
+  $('#st-pace', s).onchange = (e) => { S.settings.pace = e.target.checked; save(); render(); };
+  s.querySelectorAll('input[name="st-card"]').forEach((r) => { r.onchange = () => { S.settings.card = r.value; save(); render(); }; });
+  $('#st-export', s).onclick = () => exportData($('#st-out', s));
+  $('#st-import', s).onclick = () => $('#import-file').click();
+}
+
+async function exportData(out) {
+  const json = JSON.stringify(S, null, 1);
+  const name = `budget-${today()}.json`;
+  try {
+    const file = new File([json], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) {}
+  out.innerHTML = `<label class="field"><span>Если файл не скачался, скопируйте текст и сохраните его в Заметках</span><textarea class="input" id="st-json" readonly>${esc(json)}</textarea></label>
+    <button class="btn soft" id="st-copy">Скопировать</button>`;
+  $('#st-copy', out).onclick = async () => {
+    const ta = $('#st-json', out);
+    try { await navigator.clipboard.writeText(json); toast('Скопировано'); } catch (e) { ta.focus(); ta.select(); }
+  };
+}
+$('#import-file').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d || !Array.isArray(d.categories) || !Array.isArray(d.tx)) throw new Error();
+      fixSettings(d); d.budget = d.budget || {}; if (!Array.isArray(d.tags)) d.tags = [];
+      S = d; save(); render(); closeSheet(); toast(`Загружено: ${d.categories.length} категорий, ${d.tx.length} трат`);
+    } catch (_) { toast('Файл не похож на копию данных этого приложения'); }
+  };
+  r.readAsText(f); e.target.value = '';
+});
+
+/* ---------- toast ---------- */
+let toastTimer = null, toastEl = null, toastOut = null;
+function toast(msg) {
+  const RM = reduceMotion();
+  if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'toast'; toastEl.setAttribute('role', 'status'); toastEl.hidden = true; document.body.appendChild(toastEl); }
+  const r = $('.bar').getBoundingClientRect();
+  toastEl.style.top = (r.top + r.height / 2) + 'px';
+  toastEl.textContent = msg;
+  if (toastOut) { toastOut.cancel(); toastOut = null; }
+  const wasShown = !toastEl.hidden;
+  toastEl.hidden = false; document.body.classList.add('toasting');
+  if (!wasShown && !RM) toastEl.animate([
+    { opacity: 0, transform: 'translate(-50%, -50%) translateY(-14px) scale(.96)' },
+    { opacity: 1, transform: 'translate(-50%, -50%)' }], { duration: 280, easing: 'cubic-bezier(.3,.7,.3,1)' });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    const done = () => { toastEl.hidden = true; document.body.classList.remove('toasting'); toastOut = null; };
+    if (RM) return done();
+    toastOut = toastEl.animate([
+      { opacity: 1, transform: 'translate(-50%, -50%)' },
+      { opacity: 0, transform: 'translate(-50%, -50%) translateY(-6px)' }], { duration: 220, easing: 'ease-in' });
+    toastOut.onfinish = done;
+  }, 3600);
+}
+
+/* ---------- boot ---------- */
+$('#prev').innerHTML = icon('left');
+$('#next').innerHTML = icon('right');
+$('#settings-btn').innerHTML = icon('sliders');
+$('#fab .plus').innerHTML = icon('plus');
+function goMonth(d) {
+  if (d > 0 && view >= ymOf(today())) return;
+  view = shiftYM(view, d); render();
+}
+$('#prev').onclick = () => goMonth(-1);
+$('#next').onclick = () => goMonth(1);
+$('#settings-btn').onclick = openSettings;
+$('#fab').onclick = () => openTx({});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetEl) render(); });
+
+// When the iOS keyboard opens, keep open sheets and pages above it.
+// The keyboard height is remembered so the expense form can lift before the next keyboard appears.
+let kbH = 0;
+try { kbH = +localStorage.getItem('budget-kb-h') || 0; } catch (_) {}
+// until measured: typical keyboard + ⌃⌄✓ bar height for the screen size (SE / regular / Plus & Pro Max)
+const kbGuess = () => kbH || (innerHeight < 720 ? 304 : innerHeight < 900 ? 378 : 390);
+// Make a layout change to a sheet and let its top glide from the old place to the new one (FLIP), instead of jumping.
+function flipSheet(sh, change) {
+  const t0 = sh.getBoundingClientRect().top;
+  change();
+  const d = Math.round(t0 - sh.getBoundingClientRect().top);
+  if (!d || reduceMotion() || !sh.classList.contains('on')) return;
+  sh.style.transition = 'none'; sh.style.transform = `translateY(${d}px)`;
+  void sh.offsetHeight;
+  sh.style.transition = ''; sh.style.transform = '';
+}
+// Make the tray (categories + keypad) as tall as the system keyboard, so swapping one for the other moves nothing.
+// Extra height goes into the keys first (up to 58 px), the rest above the categories.
+function fitTray(sh) {
+  const tray = sh.querySelector('.tray'), row = sh.querySelector('.cmt-row');
+  if (!tray || !row || sh.classList.contains('typing')) return;
+  sh.style.removeProperty('--key-h'); sh.style.removeProperty('--tray-extra');
+  const need = Math.round(row.getBoundingClientRect().bottom - sh.getBoundingClientRect().top + 4 + kbGuess() - sh.offsetHeight);
+  if (need <= 0) return;
+  const perKey = Math.min(10, Math.floor(need / 3));
+  if (perKey) sh.style.setProperty('--key-h', (48 + perKey) + 'px');
+  if (need - perKey * 3 > 0) sh.style.setProperty('--tray-extra', (need - perKey * 3) + 'px');
+}
+// Seat the expense form on the keyboard: the sheet keeps bottom 0, its white padding takes the keyboard height.
+// If the sheet would come out lower than before typing (_h0), the padding grows by the difference so the sheet
+// does not move at all; it only rises when the keyboard needs more room than the tray took.
+function seatOnKeyboard(sh, kb) {
+  if (!kb) { sh.style.removeProperty('--kb'); return; }
+  sh.style.setProperty('--kb', kb + 'px');
+  const lack = (sh._h0 || 0) - sh.offsetHeight;
+  if (lack > 0 && sh.classList.contains('typing')) sh.style.setProperty('--kb', (kb + lack) + 'px');
+}
+const kbNow = () => { const vv = window.visualViewport; return vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0; };
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const lift = () => {
+    const kb = kbNow();
+    if (sheetEl) {
+      // the expense form follows the keyboard only while typing a comment;
+      // after that the sheet goes straight down, behind the keyboard that is still leaving
+      const txs = sheetEl.classList.contains('txs'), typing = sheetEl.classList.contains('typing');
+      const own = !txs || typing;
+      if (typing && kb > 120 && kb !== kbH) { kbH = kb; try { localStorage.setItem('budget-kb-h', kb); } catch (_) {} }
+      if (typing) { if (kb) { const sh = sheetEl; flipSheet(sh, () => seatOnKeyboard(sh, kb)); } } // while the keyboard is still coming up, keep the early lift
+      else {
+        const k = own ? kb : 0;
+        sheetEl.style.bottom = k ? k + 'px' : ''; sheetEl.style.maxHeight = k ? (vv.height - 8) + 'px' : '';
+      }
+    }
+    if (pageEl) pageEl.style.bottom = kb ? kb + 'px' : '';
+    if (sheetEl && sheetEl._placeMenu) sheetEl._placeMenu();
+  };
+  vv.addEventListener('resize', lift); vv.addEventListener('scroll', lift);
+}
+
+S = load();
+if (!Array.isArray(S.tags)) S.tags = [];
+onbInit();
+render();
+// iOS keeps the PWA alive for days: count a new day when it comes back to the screen
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !onbShow) return;
+  onbInit(); if (!onbShow) { const el = $('#onb'); el && el.remove(); }
+});
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (_) {}
+if (false) { // test copy: no service worker
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+})();
+</script>
+
+</body>
+</html>
