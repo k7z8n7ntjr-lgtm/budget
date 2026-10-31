@@ -169,7 +169,7 @@ input[type=date].input { min-height: 44px; }
 /* While typing, the sheet stays pinned to the screen bottom and the tray is swapped for white padding of the keyboard
    height (--kb), in the same frame and without animation: the sheet keeps about the same height, so it neither dips
    nor jumps, and the keyboard slides over white. */
-.sheet.txs.typing { padding-bottom: calc(12px + var(--kb, 0px)); max-height: none; }
+.sheet.txs.typing { padding-bottom: calc(4px + var(--kb, 0px)); max-height: none; }
 /* until the comment is tapped, a long press must not select text or focus the field natively (iOS would scroll the page) */
 .sheet.txs:not(.typing) #tx-comment[readonly] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .sheet.txs.typing .tray { display: none; }
@@ -1088,6 +1088,7 @@ function openTx({ id = null, catId = null, back = null }) {
   const startTyping = () => {
     if (s.classList.contains('typing')) return;
     closePop(true); if (menu) closeMenu();
+    s._h0 = s.offsetHeight; // keep this height while typing if the field still clears the keyboard
     flipSheet(s, () => {
       s.classList.add('typing'); s.scrollTop = 0;
       if (coarse) seatOnKeyboard(s, kbGuess());
@@ -1624,8 +1625,13 @@ function flipSheet(sh, change) {
   sh.style.transition = ''; sh.style.transform = '';
 }
 // Seat the expense form on the keyboard: the sheet keeps bottom 0, its white padding takes the keyboard height.
+// If the sheet would come out lower than before typing (_h0), the padding grows by the difference so the sheet
+// does not move at all; it only rises when the keyboard needs more room than the tray took.
 function seatOnKeyboard(sh, kb) {
-  if (kb) sh.style.setProperty('--kb', kb + 'px'); else sh.style.removeProperty('--kb');
+  if (!kb) { sh.style.removeProperty('--kb'); return; }
+  sh.style.setProperty('--kb', kb + 'px');
+  const lack = (sh._h0 || 0) - sh.offsetHeight;
+  if (lack > 0 && sh.classList.contains('typing')) sh.style.setProperty('--kb', (kb + lack) + 'px');
 }
 const kbNow = () => { const vv = window.visualViewport; return vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0; };
 if (window.visualViewport) {
