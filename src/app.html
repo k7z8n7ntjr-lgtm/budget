@@ -174,7 +174,7 @@ input[type=date].input { min-height: 44px; }
 .sheet.txs:not(.typing) #tx-comment[readonly] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .sheet.txs.typing .tray { display: none; }
 /* Bottom tray "where": categories + keypad on the grey keyboard surface, edge to edge */
-.tray { flex: none; display: flex; flex-direction: column; gap: 12px; background: var(--bg); padding-top: 14px; margin-top: 6px;
+.tray { flex: none; display: flex; flex-direction: column; gap: 12px; background: var(--bg); padding-top: calc(14px + var(--tray-extra, 0px)); margin-top: 6px;
   margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px))); }
 .tray .chips { margin-left: 0; margin-right: 0; }
 .tray .chip { background: var(--surface); border-color: transparent; box-shadow: 0 1px 0 rgba(0,0,0,.07); }
@@ -197,9 +197,10 @@ input[type=date].input { min-height: 44px; }
 @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
 /* Date wheel, iOS-alarm style: rows sit on a cylinder, the selected one in a band.
    The chip shows only the date; touching it pops a 5-row wheel over the form. */
-.datechip { position: relative; flex: none; width: 144px; height: 56px; border-radius: 14px; background: var(--bg); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ns-resize; }
-.datechip .dlabel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; transition: opacity .12s; }
-.datechip .dlabel svg { position: absolute; right: 10px; top: 50%; margin-top: -8px; width: 16px; height: 16px; color: #A3A9A5; }
+.datechip { position: relative; flex: none; width: 144px; height: 56px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ns-resize; }
+.datechip .dlabel { position: absolute; inset: 0; padding: 0 30px 0 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; transition: opacity .12s; }
+/* the date and the tag button share one arrow: same icon, size, colour and distance from the right edge */
+.datechip .dlabel svg, .tagbtn .tb-arrow { position: absolute; right: 9px; top: 50%; margin-top: -8px; width: 16px; height: 16px; color: #A3A9A5; }
 .datechip.open .dlabel { opacity: .25; }
 .wheel { position: absolute; inset: 0; perspective: 260px; pointer-events: none; }
 .wheel::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: var(--band); margin-top: calc(var(--band) / -2); border-radius: 8px; background: var(--key); }
@@ -216,7 +217,7 @@ input[type=date].input { min-height: 44px; }
   margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
   padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
 .keypad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.keypad button { height: 48px; border-radius: 10px; background: var(--surface); font-family: var(--font-num); font-size: 24px; font-weight: 500; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0,0,0,.08); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.keypad button { height: var(--key-h, 48px); border-radius: 10px; background: var(--surface); font-family: var(--font-num); font-size: 24px; font-weight: 500; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0,0,0,.08); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .keypad button.f { background: var(--key); }
 .keypad button.ok { background: var(--accent); color: var(--accent-ink); }
 .keypad button.ok svg { width: 26px; height: 26px; stroke-width: 2.6; }
@@ -282,12 +283,13 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 /* ---------- tags: button + menu in the expense form ---------- */
 .cmt-row { display: flex; gap: 10px; align-items: stretch; }
 .cmt-row .input { flex: 1; min-width: 0; height: 42px; }
-.tagbtn { flex: none; width: 144px; height: 42px; border-radius: 12px; background: #F2F2F0; border: 1px solid #E6E6E3; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; color: var(--muted); font-size: 15px; min-width: 0; }
+.tagbtn { position: relative; flex: none; width: 144px; height: 42px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 30px 0 10px; color: var(--muted); font-size: 15px; min-width: 0; }
 .tagbtn svg { width: 16px; height: 16px; flex: none; }
-.tagbtn .tb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.tagbtn .tb-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tagbtn.on { background: #E7EFEA; border-color: #2F5446; color: #2F5446; font-weight: 600; }
-.tagbtn.on svg path { fill: currentColor; }
-.tagbtn.on svg circle { fill: #E7EFEA; stroke: #E7EFEA; }
+.tagbtn.on .tb-ico path { fill: currentColor; }
+.tagbtn.on .tb-ico circle { fill: #E7EFEA; stroke: #E7EFEA; }
+.tagbtn.on .tb-arrow { color: #2F5446; opacity: .55; }
 .tagbtn .tb-more { flex: none; font-size: 12px; font-weight: 700; background: #2F5446; color: #fff; border-radius: 8px; padding: 1px 6px; }
 .tmenu { position: fixed; z-index: 30; width: 200px; background: var(--surface); border-radius: 14px; box-shadow: 0 12px 32px rgba(16,30,22,.2), 0 0 0 1px rgba(0,0,0,.05); display: flex; flex-direction: column; overflow: hidden; animation: tmin .16s ease-out; }
 @keyframes tmin { from { opacity: 0; transform: translateY(-4px); } }
@@ -447,7 +449,7 @@ const ICONS = {
 };
 const CAT_ICONS = Object.keys(ICONS).slice(0, Object.keys(ICONS).indexOf('landmark'));
 const COLORS = ['#3A8F5C','#D9822B','#C2577A','#3D6FD1','#7A5AC8','#2A9BA3','#B8923A','#6B7A3A','#5B6B80','#A0522D'];
-const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ICONS.dots}</svg>`;
+const icon = (n, cls) => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ICONS.dots}</svg>`;
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -962,8 +964,8 @@ function openTx({ id = null, catId = null, back = null }) {
     tagBtn.classList.toggle('on', sel.length > 0);
     tagBtn.setAttribute('aria-label', sel.length ? 'Теги: ' + sel.map((g) => g.name).join(', ') : 'Выбрать тег');
     tagBtn.innerHTML = sel.length
-      ? `${icon('tag')}<span class="tb-name">${esc(sel[0].name)}</span>${sel.length > 1 ? `<span class="tb-more">+${sel.length - 1}</span>` : ''}`
-      : `${icon('tag')}<span class="tb-name">Тег</span>${icon('chevron-down')}`;
+      ? `${icon('tag', 'tb-ico')}<span class="tb-name">${esc(sel[0].name)}</span>${sel.length > 1 ? `<span class="tb-more">+${sel.length - 1}</span>` : ''}${icon('chevrons-up-down', 'tb-arrow')}`
+      : `${icon('tag', 'tb-ico')}<span class="tb-name">Тег</span>${icon('chevrons-up-down', 'tb-arrow')}`;
   };
   paintTagBtn();
   const placeMenu = () => {
@@ -1110,7 +1112,7 @@ function openTx({ id = null, catId = null, back = null }) {
   if (coarse) commentEl.readOnly = true;
   commentEl.addEventListener('focus', () => { if (commentEl.readOnly) { commentEl.blur(); return; } startTyping(); });
   commentEl.addEventListener('blur', () => {
-    flipSheet(s, () => { s.classList.remove('typing'); seatOnKeyboard(s, 0); });
+    flipSheet(s, () => { s.classList.remove('typing'); seatOnKeyboard(s, 0); fitTray(s); }); // the keyboard height may be known now
     if (coarse) commentEl.readOnly = true;
     if (window.scrollY) window.scrollTo(0, 0);
   });
@@ -1151,6 +1153,7 @@ function openTx({ id = null, catId = null, back = null }) {
   }
   const pre = cat && s.querySelector(`#tx-cats [data-c="${cat}"]`);
   if (pre) requestAnimationFrame(() => revealChip(pre, false));
+  fitTray(s);
   const del = $('#tx-del', s);
   if (del) del.onclick = () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); toast('Нажмите ещё раз, чтобы удалить'); return; }
@@ -1613,7 +1616,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !s
 // The keyboard height is remembered so the expense form can lift before the next keyboard appears.
 let kbH = 0;
 try { kbH = +localStorage.getItem('budget-kb-h') || 0; } catch (_) {}
-const kbGuess = () => kbH || Math.round(innerHeight * .45);
+// until measured: typical keyboard + ⌃⌄✓ bar height for the screen size (SE / regular / Plus & Pro Max)
+const kbGuess = () => kbH || (innerHeight < 720 ? 304 : innerHeight < 900 ? 378 : 390);
 // Make a layout change to a sheet and let its top glide from the old place to the new one (FLIP), instead of jumping.
 function flipSheet(sh, change) {
   const t0 = sh.getBoundingClientRect().top;
@@ -1623,6 +1627,18 @@ function flipSheet(sh, change) {
   sh.style.transition = 'none'; sh.style.transform = `translateY(${d}px)`;
   void sh.offsetHeight;
   sh.style.transition = ''; sh.style.transform = '';
+}
+// Make the tray (categories + keypad) as tall as the system keyboard, so swapping one for the other moves nothing.
+// Extra height goes into the keys first (up to 58 px), the rest above the categories.
+function fitTray(sh) {
+  const tray = sh.querySelector('.tray'), row = sh.querySelector('.cmt-row');
+  if (!tray || !row || sh.classList.contains('typing')) return;
+  sh.style.removeProperty('--key-h'); sh.style.removeProperty('--tray-extra');
+  const need = Math.round(row.getBoundingClientRect().bottom - sh.getBoundingClientRect().top + 4 + kbGuess() - sh.offsetHeight);
+  if (need <= 0) return;
+  const perKey = Math.min(10, Math.floor(need / 3));
+  if (perKey) sh.style.setProperty('--key-h', (48 + perKey) + 'px');
+  if (need - perKey * 3 > 0) sh.style.setProperty('--tray-extra', (need - perKey * 3) + 'px');
 }
 // Seat the expense form on the keyboard: the sheet keeps bottom 0, its white padding takes the keyboard height.
 // If the sheet would come out lower than before typing (_h0), the padding grows by the difference so the sheet
