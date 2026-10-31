@@ -81,8 +81,13 @@ with sync_playwright() as p:
     pg = page(data()); pg.click('#fab'); pg.wait_for_timeout(450); snap(pg, '06-expense-empty')
     for k in '850': key(pg, k)
     cat(pg, 'c3'); pg.wait_for_timeout(100); snap(pg, '07-expense-ready')
-    pg.evaluate("document.querySelector('#tx-drum').scrollTop -= 22*2"); pg.wait_for_timeout(300)
-    bb = pg.locator('.amt-row').bounding_box(); snap(pg, '08-date-drum', clip={'x': 0, 'y': bb['y'] - 12, 'width': W, 'height': 84})
+    # date wheel: hold the finger on the date and pull down two rows
+    d = pg.locator('#tx-date').bounding_box(); x, y = d['x'] + 70, d['y'] + 28
+    pg.mouse.move(x, y); pg.mouse.down()
+    for i in range(1, 9): pg.mouse.move(x, y + 68 * i / 8)
+    pg.wait_for_timeout(100)
+    bb = pg.locator('.amt-row').bounding_box(); snap(pg, '08-date-wheel', clip={'x': 0, 'y': bb['y'] - 76, 'width': W, 'height': 200})
+    pg.mouse.up(); pg.wait_for_timeout(900)
 
     # tags in the form
     pg.click('#tx-tagbtn'); pg.wait_for_timeout(200)
@@ -128,7 +133,9 @@ with sync_playwright() as p:
     # toast: expense dated in another month
     pg = page(data()); pg.click('#fab'); pg.wait_for_timeout(450)
     for k in '450': key(pg, k)
-    pg.evaluate("document.querySelector('#tx-drum').scrollTop = 0"); pg.wait_for_timeout(250)
+    pg.focus('#tx-date')
+    for _ in range(40): pg.keyboard.press('ArrowUp'); pg.wait_for_timeout(15)  # to the earliest date: last month
+    pg.wait_for_timeout(300)
     cat(pg, 'c1'); key(pg, 'ok'); pg.wait_for_timeout(900); snap(pg, '22-toast-other-month', clip={'x': 0, 'y': 0, 'width': W, 'height': 220})
     b.close()
 srv.shutdown()
