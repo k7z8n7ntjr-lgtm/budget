@@ -61,7 +61,7 @@ body.toasting .month { opacity: 0; }
    Water and the empty part are close in tone, so the text keeps one colour over both and is never cut by the waterline.
    Two looks, switched in settings (S.settings.card): dark (default) and light. */
 .budget { display: block; }
-.bcard { --top: #4A8070; --water: #1F4F42; --ink: #fff; position: relative; display: block; width: 100%; height: 138px; border-radius: 22px; overflow: hidden; text-align: left; background: var(--top); color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s, opacity .15s; }
+.bcard { --top: #4A8070; --water: #1F4F42; --ink: #fff; position: relative; display: block; width: 100%; height: 124px; border-radius: 22px; overflow: hidden; text-align: left; background: var(--top); color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s, opacity .15s; }
 .bcard.light { --top: var(--surface); --water: #BFD5C7; --ink: var(--level-ink); }
 .bcard.over { --top: var(--danger-tint); --ink: var(--danger); }
 .bcard .water { position: absolute; left: 0; right: 0; bottom: 0; background: var(--water); }
@@ -69,7 +69,9 @@ body.toasting .month { opacity: 0; }
 .bcard .lab { font-size: 11px; letter-spacing: .09em; font-weight: 700; text-transform: uppercase; opacity: .8; }
 .bcard .big { font-family: var(--font-num); font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bcard .sp { font-size: 13px; margin-top: 4px; opacity: .85; font-variant-numeric: tabular-nums; }
-.bcard .hint { margin-top: auto; font-size: 12px; opacity: .72; line-height: 1.3; }
+/* onboarding hint under the card: shown until the first drag onto a category, at most on 3 different days (SPEC 3.3) */
+.onb { margin: 6px 4px 0; font-size: 13px; line-height: 1.3; color: var(--muted); transition: opacity .3s; }
+.onb.gone { opacity: 0; }
 .bcard.lifted { transform: scale(.97); opacity: .6; }
 .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
 
@@ -100,6 +102,7 @@ body.toasting .month { opacity: 0; }
 .cat.add svg { width: 18px; height: 18px; }
 body.dragging .cat:not(.add) { box-shadow: 0 0 0 1.5px var(--line); }
 .cat.drop { box-shadow: 0 0 0 2px var(--accent) !important; transform: scale(1.03); }
+.cat.over.drop { box-shadow: 0 0 0 2px var(--danger) !important; }
 
 .ghost { position: fixed; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 24px; font-weight: 700; pointer-events: none; z-index: 50; box-shadow: 0 8px 24px rgba(20,40,30,.3); }
 
@@ -601,7 +604,7 @@ function render() {
   const budget = limitAt(S.budget, view);
   const over = budget != null && total > budget;
   const left = budget == null ? null : budget - total;
-  const cardBody = (lab, big, sp) => `<span class="lab">${lab}</span><span class="big">${big}</span><span class="sp">${sp}</span><span class="hint">Перетащите карточку на категорию, чтобы записать трату</span>`;
+  const cardBody = (lab, big, sp) => `<span class="lab">${lab}</span><span class="big">${big}</span><span class="sp">${sp}</span>`;
   let body, level = null;
   if (budget == null) body = cardBody('Потрачено', rub(total), 'Бюджет на месяц не задан');
   else if (over) body = cardBody('Перерасход', '−' + rub(-left), `потрачено ${rub(total)} из ${rub(budget)}`);
@@ -609,7 +612,7 @@ function render() {
   $('#budget').innerHTML = `<button class="bcard ${S.settings.card === 'light' ? 'light' : ''} ${over ? 'over' : ''}" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
     ${level != null ? `<span class="water" aria-hidden="true" style="height: ${(level * 100).toFixed(2)}%"></span>` : ''}
     <span class="layer">${body}</span>
-  </button>`;
+  </button>${onbShow ? '<p class="onb" id="onb">Зажмите карточку и перетащите на категорию</p>' : ''}`;
   setupDrag($('#budget-src'));
 
   // categories
@@ -629,6 +632,28 @@ function render() {
   }).join('') + `<button class="cat add" id="add-cat">${icon('plus')} Категория</button>`;
   $('#grid').querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => openCategory(b.dataset.cat));
   $('#add-cat').onclick = () => openCategoryEdit(null);
+}
+
+/* ---------- onboarding hint ---------- */
+// Per device, not part of the data copy. Counts distinct days the app was opened; ends after the first drag or on day 4.
+const ONB_KEY = 'budget-onboarding';
+let onbShow = false;
+function onbInit() {
+  let o = null;
+  try { o = JSON.parse(localStorage.getItem(ONB_KEY)); } catch (_) {}
+  if (!o || !Array.isArray(o.days)) o = { days: [], done: false };
+  if (!o.done && !o.days.includes(today())) o.days.push(today());
+  if (o.days.length > 3) o.done = true;
+  try { localStorage.setItem(ONB_KEY, JSON.stringify(o)); } catch (_) {}
+  onbShow = !o.done;
+}
+function onbDone() {
+  if (!onbShow) return;
+  onbShow = false;
+  try { localStorage.setItem(ONB_KEY, JSON.stringify({ days: [], done: true })); } catch (_) {}
+  const el = $('#onb'); if (!el) return;
+  if (reduceMotion()) { el.remove(); return; }
+  el.classList.add('gone'); setTimeout(() => el.remove(), 320);
 }
 
 /* ---------- drag from budget ---------- */
@@ -673,7 +698,7 @@ function setupDrag(src) {
   src.addEventListener('pointerup', () => {
     if (!start) return;
     const { wasDragging, id } = finish();
-    if (wasDragging) { suppressClick = true; setTimeout(() => (suppressClick = false), 400); if (id) openTx({ catId: id }); }
+    if (wasDragging) { suppressClick = true; setTimeout(() => (suppressClick = false), 400); if (id) { onbDone(); openTx({ catId: id }); } }
   });
   src.addEventListener('pointercancel', finish);
   src.addEventListener('click', () => { if (suppressClick) { suppressClick = false; return; } openTx({}); });
@@ -1689,7 +1714,13 @@ if (window.visualViewport) {
 
 S = load();
 if (!Array.isArray(S.tags)) S.tags = [];
+onbInit();
 render();
+// iOS keeps the PWA alive for days: count a new day when it comes back to the screen
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !onbShow) return;
+  onbInit(); if (!onbShow) { const el = $('#onb'); el && el.remove(); }
+});
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (_) {}
 if ('serviceWorker' in navigator && document.documentElement.classList.contains('pwa')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

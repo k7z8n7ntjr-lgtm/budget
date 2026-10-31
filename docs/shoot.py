@@ -53,12 +53,12 @@ def snap(pg, name, clip=None):
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    def page(d):
+    def page(d, onboarding=False):
         ctx = b.new_context(viewport={'width': W, 'height': H}, device_scale_factor=2, has_touch=True,
                             locale='ru-RU', timezone_id='Europe/Moscow')
         pg = ctx.new_page()
         pg.clock.set_fixed_time(NOW)
-        pg.add_init_script(f"try{{if(!sessionStorage.seeded){{localStorage.setItem('monthly-budget-v1', {json.dumps(json.dumps(d))});sessionStorage.seeded=1}}}}catch(e){{}}")
+        pg.add_init_script(f"try{{if(!sessionStorage.seeded){{localStorage.setItem('monthly-budget-v1', {json.dumps(json.dumps(d))});{'' if onboarding else "localStorage.setItem('budget-onboarding', JSON.stringify({days: [], done: true}));"}sessionStorage.seeded=1}}}}catch(e){{}}")
         pg.goto(URL); pg.wait_for_timeout(400)
         return pg
     key = lambda pg, k: pg.locator(f'#tx-keys [data-k="{k}"]').dispatch_event('pointerdown')
@@ -69,6 +69,7 @@ with sync_playwright() as p:
     pg = page(data(budget=120000)); snap(pg, '02-main-overrun')
     pg = page(data(tx=False)); snap(pg, '03-main-month-start')
     pg = page(data(card='light')); snap(pg, '23-main-light')
+    pg = page(data(), onboarding=True); snap(pg, '24-main-onboarding')
 
     # drag the budget card onto a category
     pg = page(data())
