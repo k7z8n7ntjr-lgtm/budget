@@ -26,7 +26,6 @@
   --track: #E6E9E4;
   --accent: #24584A;
   --accent-ink: #FFFFFF;
-  --level-light: #DCE7E0;
   --level-ink: #1F3B32;
   --danger: #D2382A;
   --danger-tint: #FCE9E6;
@@ -72,14 +71,15 @@ body.toasting .month { opacity: 0; }
 .demo { display: flex; align-items: center; gap: 12px; justify-content: space-between; background: #FFF6DD; color: #6A5312; border-radius: 14px; padding: 10px 12px; font-size: 13px; }
 .demo button { font-weight: 600; white-space: nowrap; color: #6A5312; text-decoration: underline; }
 
-/* Budget card as a level: dark fill = what is left of the month's budget, sinking as money is spent.
-   Two identical layers; the dark one is clipped to the fill height so text changes colour where the level crosses it. */
+/* Budget card as a level: the "water" = what is left of the month's budget, sinking as money is spent.
+   Water and the empty part are close in tone, so the text keeps one colour over both and is never cut by the waterline.
+   Two looks, switched in settings (S.settings.card): dark (default) and light. */
 .budget { display: block; }
-.bcard { position: relative; display: block; width: 100%; height: 138px; border-radius: 22px; overflow: hidden; text-align: left; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s, opacity .15s; }
+.bcard { --top: #4A8070; --water: #1F4F42; --ink: #fff; position: relative; display: block; width: 100%; height: 138px; border-radius: 22px; overflow: hidden; text-align: left; background: var(--top); color: var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s, opacity .15s; }
+.bcard.light { --top: var(--surface); --water: #BFD5C7; --ink: var(--level-ink); }
+.bcard.over { --top: var(--danger-tint); --ink: var(--danger); }
+.bcard .water { position: absolute; left: 0; right: 0; bottom: 0; background: var(--water); }
 .bcard .layer { position: absolute; inset: 0; padding: 14px 18px 12px; display: flex; flex-direction: column; }
-.bcard .l1 { background: var(--level-light); color: var(--level-ink); }
-.bcard .l2 { background: var(--accent); color: #fff; }
-.bcard.over .l1 { background: var(--danger-tint); color: var(--danger); }
 .bcard .lab { font-size: 11px; letter-spacing: .09em; font-weight: 700; text-transform: uppercase; opacity: .8; }
 .bcard .big { font-family: var(--font-num); font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bcard .sp { font-size: 13px; margin-top: 4px; opacity: .85; font-variant-numeric: tabular-nums; }
@@ -541,11 +541,17 @@ function seed() {
     [9, 7270, 17, 'Билеты на поезд'],
   ];
   const tx = ex.map(([c, amount, dd, comment]) => ({ id: uid(), cat: cats[c].id, amount, date: day(dd), comment, demo: true }));
-  return { v: 1, budget: { [ym]: 150000 }, categories: cats, tx, tags: [], settings: { pace: false } };
+  return { v: 1, budget: { [ym]: 150000 }, categories: cats, tx, tags: [], settings: { pace: false, card: 'dark' } };
 }
 function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.categories) && Array.isArray(d.tx)) { if (!Array.isArray(d.tags)) d.tags = []; return d; } } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.categories) && Array.isArray(d.tx)) { if (!Array.isArray(d.tags)) d.tags = []; fixSettings(d); return d; } } } catch (e) {}
   const s = seed(); S = s; save(); return s;
+}
+// settings added later than the data format: fill defaults so older data and imported copies keep working
+function fixSettings(d) {
+  d.settings = d.settings || {};
+  if (typeof d.settings.pace !== 'boolean') d.settings.pace = false;
+  if (d.settings.card !== 'light') d.settings.card = 'dark';
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -617,9 +623,9 @@ function render() {
   if (budget == null) body = cardBody('Потрачено', rub(total), 'Бюджет на месяц не задан');
   else if (over) body = cardBody('Перерасход', '−' + rub(-left), `потрачено ${rub(total)} из ${rub(budget)}`);
   else { body = cardBody('Осталось', rub(left), `потрачено ${rub(total)} из ${rub(budget)}`); level = left / budget; }
-  $('#budget').innerHTML = `<button class="bcard ${over ? 'over' : ''}" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
-    <span class="layer l1">${body}</span>
-    ${level != null ? `<span class="layer l2" aria-hidden="true" style="clip-path: inset(${((1 - level) * 100).toFixed(2)}% 0 0 0)">${body}</span>` : ''}
+  $('#budget').innerHTML = `<button class="bcard ${S.settings.card === 'light' ? 'light' : ''} ${over ? 'over' : ''}" id="budget-src" aria-label="Добавить трату. Зажмите и перетащите на категорию">
+    ${level != null ? `<span class="water" aria-hidden="true" style="height: ${(level * 100).toFixed(2)}%"></span>` : ''}
+    <span class="layer">${body}</span>
   </button>`;
   setupDrag($('#budget-src'));
 
@@ -1272,9 +1278,9 @@ function animateChange(before, catId, RM) {
     const was = budget - before.total, now = budget - after.total;
     if (was >= 0 && now >= 0) {
       countUp(bigs, was, now, rub);
-      const l2 = $('#budget .l2');
-      if (l2) {
-        const a3 = l2.animate([{ clipPath: `inset(${((1 - was / budget) * 100).toFixed(2)}% 0 0 0)` }, { clipPath: l2.style.clipPath }], { duration: 520, easing: 'cubic-bezier(.3,.7,.3,1)' });
+      const w = $('#budget .water');
+      if (w) {
+        const a3 = w.animate([{ height: `${(was / budget * 100).toFixed(2)}%` }, { height: w.style.height }], { duration: 520, easing: 'cubic-bezier(.3,.7,.3,1)' });
         anims.push(() => a3.cancel());
       }
     }
@@ -1533,6 +1539,13 @@ function openSettings() {
     <hr>
     <button class="setrow" id="st-tags"><span class="grow">Теги</span><span class="sub" id="st-tags-n">${S.tags.length}/15</span>${icon('right')}</button>
     <hr>
+    <div class="field"><span>Карточка бюджета</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="st-card" value="dark" ${S.settings.card !== 'light' ? 'checked' : ''}>Тёмная</label>
+        <label><input type="radio" name="st-card" value="light" ${S.settings.card === 'light' ? 'checked' : ''}>Светлая</label>
+      </div>
+    </div>
+    <hr>
     <label class="switch"><input type="checkbox" id="st-pace" ${S.settings.pace ? 'checked' : ''}>
       <span><b>Подсвечивать темп трат</b><br><span class="sub">Сравниваем текущие расходы с остатком месяца. Первые дни месяца считаются как 12% лимита, чтобы одна покупка не окрашивала всё в красный. Если выключено, красным выделяется только перерасход.</span>
       <span class="legend"><span><i class="dot" style="background:${STATE_COLOR.idle}"></i>нет трат</span><span><i class="dot" style="background:${STATE_COLOR.ok}"></i>в темпе</span><span><i class="dot" style="background:${STATE_COLOR.warn}"></i>чуть быстрее</span><span><i class="dot" style="background:${STATE_COLOR.over}"></i>заметно быстрее или перерасход</span></span></span>
@@ -1553,6 +1566,7 @@ function openSettings() {
     setLimitFrom(S.budget, view, v); save(); render(); toast('Бюджет сохранён');
   };
   $('#st-pace', s).onchange = (e) => { S.settings.pace = e.target.checked; save(); render(); };
+  s.querySelectorAll('input[name="st-card"]').forEach((r) => { r.onchange = () => { S.settings.card = r.value; save(); render(); }; });
   $('#st-export', s).onclick = () => exportData($('#st-out', s));
   $('#st-import', s).onclick = () => $('#import-file').click();
 }
@@ -1583,7 +1597,7 @@ $('#import-file').addEventListener('change', (e) => {
     try {
       const d = JSON.parse(r.result);
       if (!d || !Array.isArray(d.categories) || !Array.isArray(d.tx)) throw new Error();
-      d.settings = d.settings || { pace: false }; d.budget = d.budget || {}; if (!Array.isArray(d.tags)) d.tags = [];
+      fixSettings(d); d.budget = d.budget || {}; if (!Array.isArray(d.tags)) d.tags = [];
       S = d; save(); render(); closeSheet(); toast(`Загружено: ${d.categories.length} категорий, ${d.tx.length} трат`);
     } catch (_) { toast('Файл не похож на копию данных этого приложения'); }
   };

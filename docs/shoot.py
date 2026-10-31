@@ -32,8 +32,8 @@ TX = [
     ('c6', 16676, '10', 'Квартплата и интернет', ['t3']), ('c7', 588, '14', 'Открытка и цветы', []),
     ('c8', 8749, '13', '', []), ('c9', 16032, '07', 'Маме на день рождения', []), ('c10', 7270, '17', 'Билеты на поезд', ['t2']),
 ]
-def data(budget=150000, tx=True, tags=True):
-    return {'v': 1, 'budget': {'2026-09': budget}, 'categories': CATS, 'settings': {'pace': True},
+def data(budget=150000, tx=True, tags=True, card='dark'):
+    return {'v': 1, 'budget': {'2026-09': budget}, 'categories': CATS, 'settings': {'pace': True, 'card': card},
             'tags': TAGS if tags else [],
             'tx': [{'id': f'x{i}', 'cat': c, 'amount': a, 'date': f'2026-10-{d}', 'comment': cm, 'tags': tg}
                    for i, (c, a, d, cm, tg) in enumerate(TX)] if tx else []}
@@ -68,6 +68,7 @@ with sync_playwright() as p:
     pg = page(data()); snap(pg, '01-main')
     pg = page(data(budget=120000)); snap(pg, '02-main-overrun')
     pg = page(data(tx=False)); snap(pg, '03-main-month-start')
+    pg = page(data(card='light')); snap(pg, '23-main-light')
 
     # drag the budget card onto a category
     pg = page(data())
