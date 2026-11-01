@@ -827,15 +827,16 @@ function dateLabel(ds) {
   if (ds === dateStr(y)) return 'Вчера';
   return shortDate(ds);
 }
-// Dates for the wheel: 5 last days of the previous month, then the month up to today (or its last day).
+// Dates for the wheel, by the month of the date (the month on screen, or the spend's month when editing).
+// Current month: from whichever is earlier — 31 days ago or 5 days before the 1st — to today.
+// Past month: 5 days before the 1st to its last day.
 function wheelDates(ds) {
-  const ym = ymOf(ds), [Y, M] = ymParts(ym);
-  const lastDay = ym === ymOf(today()) ? new Date().getDate() : daysIn(ym);
+  const ym = ymOf(ds), [Y, M] = ymParts(ym), cur = ym === ymOf(today());
+  const end = cur ? parseDS(today()) : new Date(Y, M, 0);
+  const back31 = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 31);
+  const start = cur ? new Date(Math.min(new Date(Y, M - 1, -4), back31)) : new Date(Y, M - 1, -4);
   const out = [];
-  for (let d = new Date(Y, M - 1, -4); ; d.setDate(d.getDate() + 1)) {
-    out.push(dateStr(d));
-    if (d.getMonth() === M - 1 && d.getDate() >= lastDay) break;
-  }
+  for (const d = start; d <= end; d.setDate(d.getDate() + 1)) out.push(dateStr(d));
   if (!out.includes(ds)) out.push(ds);
   return out;
 }
@@ -859,7 +860,7 @@ function openTx({ id = null, catId = null, back = null }) {
   const isEdit = !!t;
   let cat = t ? t.cat : catId;
   const cur = ymOf(today());
-  const defDate = view === cur ? today() : `${view}-${pad(daysIn(view))}`;
+  const defDate = view === cur ? today() : `${view}-15`; // a past month opens mid-month: any day is ≤ 16 rows away
   const cats = visibleCats(view).concat(t && !visibleCats(view).some((c) => c.id === t.cat) ? [catById(t.cat)].filter(Boolean) : []);
   let amt = t ? String(t.amount).replace('.', ',') : '';
   let date = t ? t.date : defDate;
