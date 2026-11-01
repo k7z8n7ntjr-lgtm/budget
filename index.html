@@ -219,6 +219,10 @@ input[type=date].input { min-height: 44px; }
 /* the date and the tag button put their arrow in the same place: same size, colour and distance from the right edge */
 .datechip .dlabel svg, .tagbtn .tb-arrow { position: absolute; right: 9px; top: 50%; margin-top: -8px; width: 16px; height: 16px; color: #A3A9A5; }
 .datechip.open .dlabel { opacity: .25; }
+/* in the chip the digits lead: "29.10" larger and bolder than the weekday; "Сегодня"/"Вчера" a bit smaller than the digits so both weigh the same */
+.dlabel .dl-d { font-family: var(--font-num); font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+.dlabel .dl-w { margin-left: .28em; }
+.dlabel .dl-rel { font-size: 19px; font-weight: 700; }
 .wheel { position: absolute; inset: 0; perspective: 260px; pointer-events: none; }
 .wheel::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: var(--band); margin-top: calc(var(--band) / -2); border-radius: 8px; background: var(--key); }
 .wrow { position: absolute; left: 0; right: 0; top: 50%; height: var(--rh); margin-top: calc(var(--rh) / -2); display: flex; align-items: center; justify-content: center; font-size: var(--fs); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; backface-visibility: hidden; will-change: transform, opacity; }
@@ -936,7 +940,11 @@ function openTx({ id = null, catId = null, back = null }) {
       r.classList.toggle('sel', i === near);
     });
   };
-  const paintLabel = () => { const l = $('.dlabel span', dateEl); if (l) l.textContent = dateLabel(date); dateEl.setAttribute('aria-valuetext', dateLabel(date)); };
+  const chipLabel = (ds) => {
+    const t = dateLabel(ds), sp = t.indexOf(' ');
+    return sp < 0 ? `<span class="dl-rel">${t}</span>` : `<span class="dl-d">${t.slice(0, sp)}</span><span class="dl-w">${t.slice(sp + 1)}</span>`;
+  };
+  const paintLabel = () => { const l = $('.dlabel > span', dateEl); if (l) l.innerHTML = chipLabel(date); dateEl.setAttribute('aria-valuetext', dateLabel(date)); };
   const setPos = (p) => {
     pos = p; paintWheel();
     const d = days[Math.max(0, Math.min(N - 1, Math.round(p)))];

@@ -90,6 +90,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(100)
     bb = pg.locator('.amt-row').bounding_box(); snap(pg, '08-date-wheel', clip={'x': 0, 'y': bb['y'] - 76, 'width': W, 'height': 200})
     pg.mouse.up(); pg.wait_for_timeout(900)
+    snap(pg, '25-date-chip', clip={'x': 0, 'y': bb['y'] - 76, 'width': W, 'height': 200})  # the chip with a date, after the wheel closed
 
     # tags in the form
     pg.click('#tx-tagbtn'); pg.wait_for_timeout(300); snap(pg, '09-tags-menu')
