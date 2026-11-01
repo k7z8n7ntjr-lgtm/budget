@@ -113,6 +113,8 @@ with sync_playwright() as p:
 
     # category history, edit, category settings
     pg = page(data()); pg.locator('.cat[data-cat="c3"]').click(); pg.wait_for_timeout(450); snap(pg, '18-category-history')
+    pg.click('#cat-filt [data-f="t"]'); pg.wait_for_timeout(500); snap(pg, '26-category-history-filter')
+    pg.click('#cat-filt [data-f=""]'); pg.wait_for_timeout(500)
     pg.locator('.sheet [data-t]').first.click(); pg.wait_for_timeout(500); snap(pg, '19-expense-edit')
     pg = page(data()); pg.locator('.cat[data-cat="c3"]').click(); pg.wait_for_timeout(450); pg.click('#cat-edit'); pg.wait_for_timeout(450); snap(pg, '20-category-settings')
 
