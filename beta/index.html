@@ -272,14 +272,15 @@ input[type=date].input { min-height: 44px; }
 .summary .k { display: block; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 3px; }
 .summary .v { display: block; font-size: 17px; font-weight: 700; color: var(--fg); white-space: nowrap; }
 .summary .over .k, .summary .over .v { color: var(--danger); }
-.day { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 12px; padding-bottom: 2px; }
+.day { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 16px; padding-bottom: 2px; }
 .list > .day:first-child { margin-top: 4px; }
 .day .ds { letter-spacing: 0; font-size: 13px; font-weight: 500; white-space: nowrap; }
-.tx { display: flex; align-items: center; gap: 10px; padding: 10px 0; min-height: 44px; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
+.tx { position: relative; display: flex; align-items: baseline; gap: 10px; padding: 11px 0; width: 100%; text-align: left; }
+.tx .hl { position: absolute; inset: 0 -16px; z-index: -1; background: #DDF0E4; opacity: 0; pointer-events: none; }
+.list { isolation: isolate; }
 .tx .c { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tx .tg { flex: 0 0 auto; max-width: 48%; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 13px; color: var(--muted); }
-.tx .tg span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tx .tg svg { width: 13px; height: 13px; flex: none; }
+.tx .tg { flex: 0 0 auto; max-width: 48%; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx .tg svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
 .tx .a { flex: none; min-width: 90px; text-align: right; font-weight: 600; white-space: nowrap; }
 .hfilt { flex: none; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: -2px 0 -4px; }
 .hfilt::-webkit-scrollbar { display: none; }
@@ -1387,7 +1388,7 @@ function openCategory(id, { keep = false, hl = null } = {}) {
       for (const t of shown.slice(i, j)) {
         const tg = tagNames(t);
         out += `<button class="tx" data-t="${t.id}"><span class="c">${esc(t.comment || '')}</span>` +
-          (tg.length ? `<span class="tg">${icon('tag')}<span>${esc(tg.join(', '))}</span></span>` : '') +
+          (tg.length ? `<span class="tg">${icon('tag')}${esc(tg.join(', '))}</span>` : '') +
           `<span class="a num">${minus(t.amount)}</span></button>`;
       }
       i = j;
@@ -1412,9 +1413,20 @@ function openCategory(id, { keep = false, hl = null } = {}) {
   const filt = $('#cat-filt', s);
   if (filt) filt.onclick = (e) => {
     const b = e.target.closest('[data-f]'); if (!b) return;
+    if ((b.dataset.f || null) === h.filter) return;
     h.filter = b.dataset.f || null;
     filt.querySelectorAll('[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-    $('#cat-list', s).innerHTML = listHtml(); bindRows();
+    const h0 = s.offsetHeight, list = $('#cat-list', s);
+    list.innerHTML = listHtml(); bindRows();
+    if (reduceMotion()) return;
+    // the sheet is anchored to the bottom: ease its height instead of letting its top jump
+    const h1 = s.offsetHeight;
+    if (h0 !== h1) {
+      s.style.overflowY = 'hidden';
+      const a = s.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 340, easing: 'cubic-bezier(.32,.72,0,1)' });
+      a.onfinish = a.oncancel = () => { s.style.overflowY = ''; };
+    }
+    list.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
   };
   $('#cat-add', s).onclick = () => { h.scroll = s.scrollTop; openTx({ catId: id, back }); };
   $('#cat-edit', s).onclick = () => openCategoryEdit(id);
@@ -1431,9 +1443,10 @@ function openCategory(id, { keep = false, hl = null } = {}) {
     // the sheet is still below the screen here, so measure the row against the sheet itself
     const top = row.getBoundingClientRect().top - s.getBoundingClientRect().top, ch = s.clientHeight;
     if (top < 80 || top + row.offsetHeight > ch - 40) s.scrollTop += top - ch / 2;
-    const fl = row.animate([{ backgroundColor: 'rgba(221,240,228,0)' }, { backgroundColor: '#DDF0E4', offset: .25 }, { backgroundColor: 'rgba(221,240,228,0)' }],
-      { duration: 1100, delay: reduceMotion() ? 0 : 280, easing: 'ease-out' });
-    void fl;
+    // edge to edge of the sheet, behind the row's text
+    const bg = document.createElement('span'); bg.className = 'hl'; row.prepend(bg);
+    const fl = bg.animate([{ opacity: 0 }, { opacity: 1, offset: .25 }, { opacity: 0 }], { duration: 1100, delay: reduceMotion() ? 0 : 280, easing: 'ease-out' });
+    fl.onfinish = () => bg.remove();
   }
 }
 
