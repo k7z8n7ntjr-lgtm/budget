@@ -92,13 +92,13 @@ with sync_playwright() as p:
     pg.mouse.up(); pg.wait_for_timeout(900)
 
     # tags in the form
-    pg.click('#tx-tagbtn'); pg.wait_for_timeout(200)
+    pg.click('#tx-tagbtn'); pg.wait_for_timeout(300); snap(pg, '09-tags-menu')
+    pg.click('#tm-multi'); pg.wait_for_timeout(100)
     pg.locator('.trow', has_text='Отпуск на море').click(); pg.locator('.trow', has_text='Дети').click(); pg.wait_for_timeout(100)
-    snap(pg, '09-tags-menu')
-    pg.click('#tm-new'); pg.fill('#tm-input', 'работа'); pg.wait_for_timeout(100); snap(pg, '10-tags-new-duplicate')
-    pg.fill('#tm-input', ''); pg.mouse.click(30, 300); pg.wait_for_timeout(150); snap(pg, '11-tags-button-selected')
-    pg = page(data(tags=False)); pg.click('#fab'); pg.wait_for_timeout(450); pg.click('#tx-tagbtn'); pg.wait_for_timeout(200)
-    pg.locator('#tm-input').blur(); snap(pg, '12-tags-menu-empty')
+    snap(pg, '10-tags-menu-multi')
+    pg.click('#tm-done'); pg.wait_for_timeout(300); snap(pg, '11-tags-button-selected')
+    pg = page(data(tags=False)); pg.click('#fab'); pg.wait_for_timeout(450); pg.click('#tx-tagbtn'); pg.wait_for_timeout(300)
+    snap(pg, '12-tags-menu-empty')
 
     # tags page
     pg = page(data()); pg.click('#settings-btn'); pg.wait_for_timeout(400); snap(pg, '13-settings')
