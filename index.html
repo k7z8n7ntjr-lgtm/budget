@@ -331,6 +331,8 @@ textarea.input { min-height: 120px; font-family: ui-monospace, Menlo, monospace;
 .tempty span { font-size: 13px; color: var(--muted); }
 .tinput { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--accent); background: var(--surface); color: var(--fg); outline: none; -webkit-appearance: none; appearance: none; }
 .tinput:focus-visible { outline: none; }
+/* iOS draws the caret where the field will end up, not where the sliding page has it: hide it until the page has arrived */
+.page.arriving .tinput { caret-color: transparent; }
 .tfield { position: relative; }
 .tfield .tinput { padding-right: 48px; }
 .tfield .tcount { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; pointer-events: none; }
@@ -1531,7 +1533,17 @@ function openTagsPage({ onBack, add = false } = {}) {
     };
   }
   render();
-  if (adding) { const ni = $('#tp-new', pg); if (ni) ni.focus({ preventScroll: true }); }
+  if (adding) {
+    const ni = $('#tp-new', pg);
+    if (ni) {
+      pg.classList.add('arriving');
+      ni.focus({ preventScroll: true }); // in the same tap, so iOS shows the keyboard
+      setTimeout(() => {
+        pg.classList.remove('arriving');
+        if (document.activeElement === ni) { const n = ni.value.length; ni.setSelectionRange(n, n); } // redraw the caret in place
+      }, reduceMotion() ? 0 : 420);
+    }
+  }
 }
 
 /* --- money inputs: 150000 → 150 000 while typing --- */
