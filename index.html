@@ -148,6 +148,7 @@ body.dragging .cat:not(.add) { box-shadow: 0 0 0 1.5px var(--line); }
 .sheet-head { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 .sheet-head h2 { font-size: 18px; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet-head .disc { width: 40px; height: 40px; flex: none; }
+.cat-head h2 { font-size: 22px; }
 
 .amount { display: flex; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--line); padding-bottom: 4px; }
 .amount:focus-within { border-color: var(--accent); }
@@ -267,9 +268,10 @@ input[type=date].input { min-height: 44px; }
 .btn svg { width: 20px; height: 20px; }
 .actions { display: flex; flex-direction: column; gap: 8px; }
 
-.summary { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; color: var(--muted); }
-.summary b { color: var(--fg); font-weight: 600; }
-.summary .over { color: var(--danger); font-weight: 600; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; color: var(--muted); }
+.summary .k { display: block; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 3px; }
+.summary .v { display: block; font-size: 17px; font-weight: 700; color: var(--fg); white-space: nowrap; }
+.summary .over .k, .summary .over .v { color: var(--danger); }
 .day { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 4px; }
 .tx { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
 .tx .c { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1334,12 +1336,11 @@ function openCategory(id) {
     }
     list += `<button class="tx" data-t="${t.id}"><span class="c">${esc(t.comment || '')}</span><span class="a num">${rub(t.amount)}</span></button>`;
   }
-  const summary = limit == null
-    ? `<span>Потрачено <b class="num">${rub(spent)}</b></span>`
-    : `<span>Потрачено <b class="num">${rub(spent)}</b> из <b class="num">${rub(limit)}</b></span>` +
-      (spent > limit ? `<span class="over num">перерасход ${rub(spent - limit)}</span>` : `<span class="num">осталось ${rub(limit - spent)}</span>`);
+  const stat = (k, v, cls = '') => `<span class="${cls}"><span class="k">${k}</span><span class="v num">${rub(v)}</span></span>`;
+  const summary = stat('Потрачено', spent) + (limit == null ? ''
+    : stat('Лимит', limit) + (spent > limit ? stat('Перерасход', spent - limit, 'over') : stat('Осталось', limit - spent)));
   const s = openSheet(`
-    <div class="sheet-head">${disc({ iconName: c.icon, color: NEUTRAL })}<h2>${esc(c.name)}</h2>
+    <div class="sheet-head cat-head">${disc({ iconName: c.icon, color: NEUTRAL })}<h2>${esc(c.name)}</h2>
       <button class="icon-btn" id="cat-edit" aria-label="Настроить категорию">${icon('pencil')}</button>${closeBtn}</div>
     <div class="summary">${summary}</div>
     <button class="btn primary" id="cat-add">${icon('plus')} Добавить трату</button>
