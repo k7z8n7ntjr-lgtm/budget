@@ -5,11 +5,13 @@
 The copy keeps its data under its own key (monthly-budget-beta), registers no service worker and has an amber icon,
 so it never touches the real app or its data. Delete beta/ in the release commit.
 """
-import json, pathlib, re
+import json, pathlib, re, sys
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).parent
-OUT = ROOT / 'beta'
+BACK = '--back' in sys.argv  # variant with «‹» in the expense form, built into beta-back/ (same test data)
+OUT = ROOT / ('beta-back' if BACK else 'beta')
+NAME = 'Бюджет β←' if BACK else 'Бюджет β'
 OUT.mkdir(exist_ok=True)
 app = (ROOT / 'src/app.html').read_text()
 
@@ -20,18 +22,19 @@ def sub(a, b):
 
 sub("const KEY = 'monthly-budget-v1';", "const KEY = 'monthly-budget-beta'; // test copy: never touches the real data")
 sub("if ('serviceWorker' in navigator && document.documentElement.classList.contains('pwa')) {", "if (false) { // test copy: no service worker")
-sub("<title>Месячный бюджет</title>", "<title>Бюджет β</title>")
+sub("<title>Месячный бюджет</title>", f"<title>{NAME}</title>")
+if BACK: sub("const BACK_BTN = false;", "const BACK_BTN = true;")
 
 # the same <head> as build.py, with the test copy's name and icons
 build = (ROOT / 'build.py').read_text()
 i = build.index("head = '''") + len("head = '''")
 head = build[i:build.index("'''", i)]
-head = head.replace('content="Бюджет"', 'content="Бюджет β"').replace('href="icon-', 'href="beta-icon-')
+head = head.replace('content="Бюджет"', f'content="{NAME}"').replace('href="icon-', 'href="beta-icon-')
 split = re.search(r'</style>', app).end()
 (OUT / 'index.html').write_text(head + app[:split] + '\n</head>\n<body>\n' + app[split:] + '\n</body>\n</html>\n')
 
 (OUT / 'manifest.json').write_text(json.dumps({
-    "name": "Бюджет β (тест)", "short_name": "Бюджет β", "id": "./", "lang": "ru", "start_url": "./", "scope": "./",
+    "name": f"{NAME} (тест)", "short_name": NAME, "id": "./", "lang": "ru", "start_url": "./", "scope": "./",
     "display": "standalone", "background_color": "#F3F4F1", "theme_color": "#F3F4F1",
     "icons": [{"src": "beta-icon-192.png", "sizes": "192x192", "type": "image/png"},
               {"src": "beta-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}]},
@@ -40,4 +43,4 @@ split = re.search(r'</style>', app).end()
 for n in (180, 192, 512):  # the app icon with its green turned amber
     h, s, v = Image.open(ROOT / f'icon-{n}.png').convert('RGB').convert('HSV').split()
     Image.merge('HSV', (h.point(lambda x: (x - 85) % 256), s, v)).convert('RGB').save(OUT / f'beta-icon-{n}.png')
-print('built beta/')
+print(f'built {OUT.name}/')

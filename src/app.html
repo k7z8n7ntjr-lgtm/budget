@@ -258,10 +258,21 @@ input[type=date].input { min-height: 44px; }
 .summary .k { display: block; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 3px; }
 .summary .v { display: block; font-size: 17px; font-weight: 700; color: var(--fg); white-space: nowrap; }
 .summary .over .k, .summary .over .v { color: var(--danger); }
-.day { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 4px; }
-.tx { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
-.tx .c { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tx .a { font-weight: 600; white-space: nowrap; }
+.day { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 12px; padding-bottom: 2px; }
+.list > .day:first-child { margin-top: 4px; }
+.day .ds { letter-spacing: 0; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.tx { display: flex; align-items: center; gap: 10px; padding: 10px 0; min-height: 44px; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
+.tx .c { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx .tg { flex: 0 0 auto; max-width: 48%; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 13px; color: var(--muted); }
+.tx .tg span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx .tg svg { width: 13px; height: 13px; flex: none; }
+.tx .a { flex: none; min-width: 90px; text-align: right; font-weight: 600; white-space: nowrap; }
+.hfilt { flex: none; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: -2px 0 -4px; }
+.hfilt::-webkit-scrollbar { display: none; }
+.hfilt button { flex: none; height: 34px; padding: 0 13px; border-radius: 17px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.hfilt button svg { width: 14px; height: 14px; }
+.hfilt button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+#tx-back { margin-left: -8px; }
 .list { display: flex; flex-direction: column; }
 .empty { color: var(--muted); text-align: center; padding: 20px 0; }
 
@@ -761,6 +772,7 @@ function closeSheet(instant) {
   sheetEl = backdropEl = null;
   if (!s) return;
   if (instant) { s.remove(); b.remove(); return; }
+  if (s._onClose) s._onClose(); // only a real close: a sheet replaced by another one (instant) skips it
   s.style.transition = ''; s.style.transform = '';
   s.classList.remove('on'); b.classList.remove('on');
   setTimeout(() => { s.remove(); b.remove(); }, 360);
@@ -799,6 +811,7 @@ function enableSwipeClose(sh) {
   sh.addEventListener('pointercancel', end);
 }
 const closeBtn = '';
+const BACK_BTN = false; // «‹» in the expense form opened from a category's history (beta.py --back turns it on)
 
 /* --- add / edit expense --- */
 const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -853,7 +866,7 @@ function openTx({ id = null, catId = null, back = null }) {
       : k === 'ok' ? `<button class="ok" data-k="ok" id="tx-save" disabled aria-label="${isEdit ? 'Сохранить' : 'Записать трату'}">${icon('check')}</button>`
       : `<button data-k="${k}">${k}</button>`).join('');
   const s = openSheet(`
-    <div class="sheet-head"><h2 id="tx-title"></h2>${isEdit ? `<button class="icon-btn del" id="tx-del" aria-label="Удалить трату">${icon('trash')}</button>` : ''}</div>
+    <div class="sheet-head">${back && BACK_BTN ? `<button class="icon-btn" id="tx-back" aria-label="Назад к списку">${icon('left')}</button>` : ''}<h2 id="tx-title"></h2>${isEdit ? `<button class="icon-btn del" id="tx-del" aria-label="Удалить трату">${icon('trash')}</button>` : ''}</div>
     <div class="amt-row">
       <div class="amt" id="tx-amt-box" aria-label="Сумма" role="textbox" aria-readonly="true"><b class="num" id="tx-amt"></b><span class="cur">₽</span></div>
       <div class="datechip" id="tx-date" tabindex="0" role="spinbutton" aria-label="Дата. Потяните вниз, чтобы выбрать более раннюю"></div>
@@ -869,6 +882,11 @@ function openTx({ id = null, catId = null, back = null }) {
     </div>
     </div>`, 'txs');
 
+  // opened from a category's history: every way out of the form leads back to that list
+  if (back) {
+    s._onClose = () => setTimeout(back, 260);
+    const bb = $('#tx-back', s); if (bb) bb.onclick = () => closeSheet();
+  }
   const amtEl = $('#tx-amt', s), commentEl = $('#tx-comment', s), saveBtn = $('#tx-save', s);
   const keysEl = $('#tx-keys', s);
   const amountValue = () => Math.round(parseFloat((amt || '0').replace(',', '.')) * 100) / 100;
@@ -1168,6 +1186,13 @@ function openTx({ id = null, catId = null, back = null }) {
     else S.tx.push({ id: uid(), cat, amount, date, comment, tags: tagIds });
     save(); // data is written at once; the screen catches up after the sheet has gone
     saveBtn.classList.remove('pop'); void saveBtn.offsetWidth; saveBtn.classList.add('pop');
+    if (back) {
+      const hl = isEdit ? t.id : S.tx[S.tx.length - 1].id;
+      s._onClose = () => setTimeout(() => back(hl), 260);
+      setTimeout(() => closeSheet(), reduceMotion() ? 0 : 170);
+      histChanged(before, cat, amount, date);
+      return true;
+    }
     setTimeout(() => closeSheet(), reduceMotion() ? 0 : 170);
     afterSave(before, cat, amount, date);
     return true;
@@ -1195,8 +1220,9 @@ function openTx({ id = null, catId = null, back = null }) {
   const del = $('#tx-del', s);
   if (del) del.onclick = () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); toast('Нажмите ещё раз, чтобы удалить'); return; }
+    const before = snapshot();
     S.tx = S.tx.filter((x) => x.id !== t.id); save(); render(); closeSheet(); toast('Трата удалена');
-    if (back) setTimeout(back, 260);
+    if (back) histChanged(before, t.cat);
   };
 }
 
@@ -1305,33 +1331,93 @@ function animateChange(before, catId, RM) {
 }
 
 /* --- category: list of expenses --- */
-function openCategory(id) {
+// The open history: its filter and scroll survive a trip to the expense form and back.
+// Changes made from it are collected and shown on the main screen when the history closes.
+let hist = null;
+function histChanged(before, catId, amount, date) {
+  if (!hist) return;
+  if (!hist.before) hist.before = before;
+  hist.cats.add(hist.cat); if (catId) hist.cats.add(catId);
+  render();
+  if (date && ymOf(date) !== view) toast(`${rub(amount)} → ${catById(catId).name}, ${dateWords(date)}`);
+  else if (catId && catId !== hist.cat) toast(`Перенесено в «${catById(catId).name}»`);
+}
+function dayLabel(ds) {
+  if (ds === today()) return 'Сегодня';
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (ds === dateStr(y)) return 'Вчера';
+  const d = parseDS(ds);
+  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}, ${WD[d.getDay()].toLowerCase()}`;
+}
+const minus = (n) => '−' + rub(n);
+function openCategory(id, { keep = false, hl = null } = {}) {
   const c = catById(id); if (!c) return;
+  if (!keep || !hist || hist.cat !== id) hist = { cat: id, filter: null, scroll: 0, before: null, cats: new Set() };
+  const h = hist;
   const txs = txIn(view).filter((t) => t.cat === id).sort((a, b) => b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1));
   const spent = txs.reduce((a, t) => a + t.amount, 0);
   const limit = limitAt(c.limits, view);
-  let list = '', lastDay = '';
-  for (const t of txs) {
-    if (t.date !== lastDay) {
-      lastDay = t.date;
-      const [y, m, d] = t.date.split('-').map(Number);
-      list += `<div class="day">${new Date(y, m - 1, d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })}</div>`;
+  const tagNames = (t) => (t.tags || []).map(tagById).filter(Boolean).map((g) => g.name);
+  const hasNote = txs.some((t) => t.comment || tagNames(t).length);
+  if (!hasNote) h.filter = null;
+  const listHtml = () => {
+    const shown = h.filter === 'c' ? txs.filter((t) => t.comment) : h.filter === 't' ? txs.filter((t) => tagNames(t).length) : txs;
+    let out = '';
+    for (let i = 0; i < shown.length; ) {
+      const day = shown[i].date; let j = i, sum = 0;
+      while (j < shown.length && shown[j].date === day) sum += shown[j++].amount;
+      out += `<div class="day"><span>${dayLabel(day)}</span><span class="ds num">${minus(sum)}</span></div>`;
+      for (const t of shown.slice(i, j)) {
+        const tg = tagNames(t);
+        out += `<button class="tx" data-t="${t.id}"><span class="c">${esc(t.comment || '')}</span>` +
+          (tg.length ? `<span class="tg">${icon('tag')}<span>${esc(tg.join(', '))}</span></span>` : '') +
+          `<span class="a num">${minus(t.amount)}</span></button>`;
+      }
+      i = j;
     }
-    list += `<button class="tx" data-t="${t.id}"><span class="c">${esc(t.comment || '')}</span><span class="a num">${rub(t.amount)}</span></button>`;
-  }
+    if (out) return out;
+    return `<div class="empty">${h.filter === 'c' ? 'Трат с комментарием нет' : h.filter === 't' ? 'Трат с тегом нет' : `В ${esc(monthIn(view))} трат нет`}</div>`;
+  };
   const stat = (k, v, cls = '') => `<span class="${cls}"><span class="k">${k}</span><span class="v num">${rub(v)}</span></span>`;
   const summary = stat('Потрачено', spent) + (limit == null ? ''
     : stat('Лимит', limit) + (spent > limit ? stat('Перерасход', spent - limit, 'over') : stat('Осталось', limit - spent)));
+  const fb = (f, label) => `<button data-f="${f}" aria-pressed="${h.filter === (f || null)}">${label}</button>`;
   const s = openSheet(`
     <div class="sheet-head cat-head">${disc({ iconName: c.icon, color: NEUTRAL })}<h2>${esc(c.name)}</h2>
       <button class="icon-btn" id="cat-edit" aria-label="Настроить категорию">${icon('pencil')}</button>${closeBtn}</div>
     <div class="summary">${summary}</div>
     <button class="btn primary" id="cat-add">${icon('plus')} Добавить трату</button>
-    <div class="list">${list || `<div class="empty">В ${esc(monthIn(view))} трат нет</div>`}</div>`);
-  const back = () => openCategory(id);
-  $('#cat-add', s).onclick = () => openTx({ catId: id, back });
+    ${hasNote ? `<div class="hfilt" id="cat-filt">${fb('', 'Все')}${fb('c', 'С комментарием')}${fb('t', `${icon('tag')}С тегом`)}</div>` : ''}
+    <div class="list" id="cat-list">${listHtml()}</div>`);
+  const back = (hl) => openCategory(id, { keep: true, hl });
+  const bindRows = () => s.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { h.scroll = s.scrollTop; openTx({ id: b.dataset.t, back }); });
+  bindRows();
+  const filt = $('#cat-filt', s);
+  if (filt) filt.onclick = (e) => {
+    const b = e.target.closest('[data-f]'); if (!b) return;
+    h.filter = b.dataset.f || null;
+    filt.querySelectorAll('[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    $('#cat-list', s).innerHTML = listHtml(); bindRows();
+  };
+  $('#cat-add', s).onclick = () => { h.scroll = s.scrollTop; openTx({ catId: id, back }); };
   $('#cat-edit', s).onclick = () => openCategoryEdit(id);
-  s.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => openTx({ id: b.dataset.t, back }));
+  // a real close of the history: play the change on the main screen, as after an ordinary save
+  s._onClose = () => {
+    if (hist !== h) return;
+    hist = null;
+    if (!h.before) return;
+    setTimeout(() => { render(); const RM = reduceMotion(); h.cats.forEach((cid) => animateChange(h.before, cid, RM)); }, reduceMotion() ? 0 : 200);
+  };
+  if (h.scroll) s.scrollTop = h.scroll;
+  const row = hl && s.querySelector(`[data-t="${hl}"]`);
+  if (row) {
+    // the sheet is still below the screen here, so measure the row against the sheet itself
+    const top = row.getBoundingClientRect().top - s.getBoundingClientRect().top, ch = s.clientHeight;
+    if (top < 80 || top + row.offsetHeight > ch - 40) s.scrollTop += top - ch / 2;
+    const fl = row.animate([{ backgroundColor: 'rgba(221,240,228,0)' }, { backgroundColor: '#DDF0E4', offset: .25 }, { backgroundColor: 'rgba(221,240,228,0)' }],
+      { duration: 1100, delay: reduceMotion() ? 0 : 280, easing: 'ease-out' });
+    void fl;
+  }
 }
 
 /* --- category: create / edit --- */
